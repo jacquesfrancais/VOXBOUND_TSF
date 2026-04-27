@@ -1,0 +1,93 @@
+:root {
+    --bg-dark: #0b0e14;
+    --cyan: #00f2ff;
+    --gold: #d4d498;
+    --nav-bg: #161b22;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: white;
+    font-family: 'Courier New', Courier, monospace;
+    margin: 0;
+}
+
+/* Navbar */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    padding: 15px 30px;
+    background: var(--nav-bg);
+    border-bottom: 1px solid #333;
+}
+
+.nav-links a {
+    color: #ccc;
+    text-decoration: none;
+    margin: 0 15px;
+}
+
+/* Toggle Views */
+.game-container, .admin-container { display: none; }
+.game-view .game-container { display: grid; grid-template-columns: 2fr 1fr; padding: 20px; gap: 20px; }
+.admin-view .admin-container { display: block; padding: 40px; }
+
+/* Game View Components */
+.story-box {
+    border: 1px solid var(--cyan);
+    height: 400px;
+    padding: 20px;
+    color: var(--gold);
+}
+
+.stats-box {
+    background: var(--cyan);
+    color: black;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.cyan-btn {
+    background: var(--cyan);
+    border: none;
+    padding: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 0 10px var(--cyan);
+}
+
+/* Admin View Components */
+.admin-content {
+    background: var(--cyan);
+    display: flex;
+    padding: 20px;
+    border-radius: 5px;
+}
+
+.console-box {
+    background: black;
+    flex: 3;
+    padding: 20px;
+    color: var(--gold);
+    border: 1px solid #444;
+}
+
+.admin-sidebar {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.black-btn {
+    background: black;
+    color: white;
+    border: 1px solid white;
+    width: 160px;
+    padding: 10px;
+    margin-bottom: 10px;
+    cursor: pointer;
+}
+
+.highlight { color: #ff5555; font-weight: bold; }

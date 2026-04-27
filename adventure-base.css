@@ -1,0 +1,65 @@
+/* adventure-base.css - Base styles and design tokens for the Adventure Web RPG */
+/* DESIGN TOKENS - Change these to update the whole look */
+:root {
+  --bg-dark: #0b0e14;
+  --primary-cyan: #00f2ff;
+  --accent-gold: #f9f933;
+  --text-main: #e9fa70;
+  --font-mono: 'JetBrains Mono', monospace;
+  --border-glow: 1px solid var(--primary-cyan);
+  --glow-shadow: 0 0 10px var(--primary-cyan);
+}
+
+/* BASE RESET */
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-family: var(--font-mono);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* LAYOUT: Main Grid for Game Page */
+.layout-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr; /* Left (Story) vs Right (Stats/Actions) */
+  gap: 20px;
+  padding: 20px;
+  flex-grow: 1;
+}
+
+/* COMPONENTS: Console & Boxes */
+.console-box {
+  border: var(--border-glow);
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  position: relative;
+}
+
+.title-label {
+  color: var(--accent-gold);
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* BUTTONS: Reusable Styles */
+.btn-neon {
+  background-color: var(--primary-cyan);
+  color: #000;
+  border: none;
+  padding: 10px 15px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: var(--glow-shadow);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--primary-cyan);
+  border: 1px solid var(--primary-cyan);
+  padding: 5px 10px;
+  cursor: pointer;
+}

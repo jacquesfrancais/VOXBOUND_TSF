@@ -1,0 +1,126 @@
+############################################
+# Environment / Secrets
+############################################
+
+# Environment variable files
+.env
+.env.*
+!.env.example
+
+# Local configuration overrides
+db_config.local.php
+db_config.php
+
+############################################
+# PHP / Server Artifacts
+############################################
+
+# Composer
+/vendor/
+composer.phar
+
+# PHP error logs
+*.log
+php_error.log
+error_log
+
+############################################
+# Database
+############################################
+
+# SQL dumps
+*.sql
+*.sqlite
+*.db
+
+# MySQL temp files
+*.pid
+
+############################################
+# Cache / Runtime
+############################################
+
+# Cache directories
+/cache/
+tmp/
+temp/
+
+# Session files (if stored locally)
+sessions/
+
+############################################
+# Frontend / Build Artifacts
+############################################
+
+# Node.js (if added later)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+/dist/
+build/
+
+############################################
+# IDE / Editor Junk
+############################################
+
+# VS Code
+.vscode/
+
+# PhpStorm
+.idea/
+*.iml
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+############################################
+# OS Garbage
+############################################
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+.nfs*
+
+############################################
+# Debug / Temporary Files
+############################################
+
+# Debug outputs
+debug.log
+dump.txt
+
+# Temporary files
+*.tmp
+*.swp
+*.bak
+
+############################################
+# Security / Certificates
+############################################
+
+# TLS / certificates (if ever added)
+*.pem
+*.key
+*.crt
+
+############################################
+# Game-Specific (Optional)
+############################################
+
+# Generated runtime data (if added later)
+runtime/
+logs/
