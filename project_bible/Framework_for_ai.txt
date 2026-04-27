@@ -1,0 +1,415 @@
+I am developing a website. I am going to paste the general design for the project, then I will paste what I have complete so far. The things that I will include are the MySQL database schema, the TSV files containing the data sets for the tables in the database, and the code for the website. Do not begin generating code until I request it. Stay true to the project design for now because I have something specific that I want to work on. Stay true to the database schema, please not make new table columns. I want you to be in code analyzing mode for now.
+
+I have added an addendum labeled "Lingua Quest Project Bible (v2.5)" to this file with updates and improvements that have to be assimilated into this vision document. 
+
+Here is the high-level Project Bible of everything we have architected for your French-learning web RPG. I’ve categorized these by "Engine," "World," and "Learning" to keep it organized for your next session.
+## 1. The Core Engine & Data
+
+* Platform: Developed in HTML, JavaScript, PHP for logic, and MySQL, and JSON for storage.
+* One Character per Account:  ownerId field.
+* The Inventory System: Uses a Unique Items collection. This allows two of the same item (e.g., "Iron Sword") to have different custom names, stats, and Durability (Current/Max).
+* Modular Architecture: Content is decoupled from code. Adding new rooms or items only requires adding rows to the database, not rewriting functions.
+
+## 2. Hierarchical World Design
+
+* Nested Diamond Structure: The story flows through "Small Diamonds" (encounters/puzzles) nested within "Medium" (areas) and "Large" (regions) diamonds. This creates a branching path that eventually converges to prevent "infinite" endings.
+* Numerical Node IDs: Every location has a unique Number ID (not a name) to allow for mazes with identical descriptions but different exit logic.
+* Compass Movement: Traditional navigation (N, S, E, W, U, D, In, Out).
+* Hybrid Travel: Step-by-step exploration for discovery, with a "Return to Base" instant shortcut unlocked through progression.
+
+## 3. Language Learning Mechanics
+
+* Dual-Command Interface:
+* Primary: French Speech-to-Text (using Web Speech API). The player gets 3 attempts to pronounce a command correctly.
+   * Secondary: Keyboard fallback if speech fails (ensures play continues without frustration).
+* Reward Economy: Successful spoken commands grant a small reward (e.g., 1 Gold) to incentivize speaking practice.
+* Bilingual Content: Both French and English versions of all story text are stored in the database (vetted by you) to ensure accuracy over "on-the-fly" browser translation.
+* Audio Support: A "Read Aloud" toggle using browser Speech Synthesis (fr-FR) for listening comprehension.
+
+## 4. Development & Admin Tools
+
+* Admin Dashboard: A private, on-site page for managing the game world.
+* The Auto-Mapper: A script that crawls your N/S/E/W links and automatically generates X, Y, Z coordinates for your grid-based minimap.
+* The Content Auditor: A QA tool that flags:
+* Non-Euclidean overrides (one-way paths).
+   * Linguistic Holes (missing English or French pairs).
+   * Broken Links or "Orphaned Nodes."
+* The Visualizer: A color-coded (Green/Yellow/Red) grid map for a bird's-eye view of game health.
+
+---------------------------------------------------------------------
+
+Combat should be its own file example combat.js as much as possible.
+
+classic RPG turn-based loop - NPC allies help PLAYER in combat
+Do we need to implement ally recruitment of NPC before we work on Combat? 
+
+The Grading: (STT with getSimilarity())
+Parfait (100%): You hit for Max Damage.
+Bien (75%): You hit for Half Damage.
+Pas compris: You miss your turn (the monster dodges).
+
+PLAYER
+Hitpoints health
+strength hit damage + weapon damage
+Agility ability to hit enemies and ability to avoid being hit
+Armor absorbing damage
+
+NPC
+Hitpoints if hitpoints gets below 15% of maxHitPoints NPC courage fails 50% chance He flees to another room.
+Strength hit damage + weapon damage
+Agility Dodge / Hit base
+Armor absorbing damage
+
+The Combat Commands (STT)
+Attack: "J'attaque (NPC - "Le Loup Affamé")
+Flee: "Je m'enfuis !" You leave the room. The enemy NPC has 33% chance at another attack before you escape.
+
+Some of the NCP's can be recruited as an ally to follow the player and help during battle, some will always be monsters and hostile towards the player, some whether neutral, friendly, or hostile will not stay in the same location through out game play, but will roam around as the player(s) navigate the game. The player, allies, and monsters have the ability to flee during battle or monsters even pursue the player when the player flees the location. The database must allow these things.
+
+When NPC die they persist in room as dead and inactive.
+
+When PLAYER dies the game starts over, but he retains his STT success score, he looses 10% gold but retains all other attribute levels.
+The Arena: Does the Dialogue Overlay turn into a Combat Overlay?yes. The Loot: When the monster hits 0 HP, we need a "Victory" sequence that drops their items (like the Wolf's collar) onto the floor and PLAYER gets a boost in attributes based on a percentage of the defeated NPC attributes.  Since we already built a beautiful Dialogue Overlay that handles STT, we could "re-skin" it for combat.
+The NPC text becomes: "Le Loup Affamé vous grogne dessus ! (HP: 30/30)"
+The options become your combat moves.
+The "Ecouter" button still works, so you can practice saying "J'attaque" before you commit.
+
+Lingua Quest Project Bible (v2.5) ============================================
+This is the Lingua Quest Project Bible (v2.5). It serves as the definitive technical and conceptual manual for the project, incorporating every structural improvement, security protocol, and logic refinement we have architected.
+------------------------------
+## 1. System Philosophy & Architecture
+
+* The "Manager vs. Judge" Model:
+* Frontend (Managers): engine.js, ui.js, speech.js, combat.js. They handle the Experience (Animations, Sound, UI updates, and Voice capturing).
+   * Backend (Judges): All .php workers. They handle the Truth (Database writes, math calculations, and security validation).
+* Global Utility (init.php): The heartbeat of the engine. It manages sessions, database connectivity, input sanitization (sanitize_input), and game-wide constants.
+* Data Decoupling: Game content (Rooms, Items, NPCs) is stored as static data. Game progress is stored in "State" tables. Adding a room requires a row in a spreadsheet, not a change in code.
+
+------------------------------
+## 2. Data & Persistence Standards
+
+* The Identity Layer:
+* Users Table: Tracks account credentials and Admin privileges.
+   * Characters Table: Tracks RPG stats (HP, STR, AGI), Gold, and the current nodeId.
+   * State Tables: (Character_Room_State, Character_NPC_State) Tracks character-specific progress like discovered rooms, NPC health, and dead/alive status.
+* The Spawner Logic: Uses WorldTemplates as a master blueprint to populate ItemInstances for new characters, ensuring everyone starts with the same items in the same places.
+* Item Integrity: Separates the Library (what a sword is) from the Instance (the specific sword you own, including its unique durability or custom JSON extraData).
+
+------------------------------
+## 3. World Design: The "Nested Diamond"
+
+* Numerical Node IDs: All locations are tracked by unique integers. This allows for identical room descriptions (Mazes) while maintaining unique exit logic.
+* Compass Navigation: Supports 8 standard directions (N, S, E, W, U, D, In, Out).
+* High-Water Mark Auto-Save:
+* Rooms can be flagged as isCheckpoint.
+   * The respawnNodeId only updates if the player reaches a higher Node ID than their current save, preventing backtracking from overwriting progress.
+* Non-Euclidean Support: Allows for one-way "slides" and shortcuts that don't follow traditional 1-to-1 map geometry.
+
+------------------------------
+## 4. Language Learning Mechanics
+
+* Functional Speech Split:
+* Input (Ears): speech.js strictly captures voice and calculates a Similarity Score (0.0 to 1.0) using Levenshtein math.
+   * Output (Mouth): ui.js contains the speakText() function to read French text aloud for listening comprehension.
+* Dual-Command Interface: Primary voice control with a secondary Keyboard Fallback that triggers automatically after 3 speech failures.
+* Reward Economy: Every successful French command grants a Gold reward (0.10 for "Bien", 0.20 for "Parfait") and increments the speechSuccessCount.
+* Bilingual Content: All story and item text is stored in both French and English pairs to ensure 100% vetted accuracy.
+
+------------------------------
+## 5. Combat & Interaction
+
+* The Arena Overlay: The exploration UI "re-skins" into a Combat Arena. Navigation is locked, and the speech priority shifts to combat commands.
+* Linguistic Combat Grading:
+* Parfait (≥0.95): Max Damage.
+   * Bien (≥0.75): Half Damage.
+   * Pas compris (<0.75): Missed Turn.
+* The Ally System: Recruited NPCs (isFollowing) are filtered into the playerParty and add their Strength to the player’s combat turns via the process_combat.php judge.
+* NPC Courage: Hostile NPCs have a 50% chance to flee to an adjacent room if their HP drops below 15%.
+* Victory & Death:
+* Victory: Triggers handle_victory.php to drop loot on the floor and boost player attributes by a percentage of the defeated foe.
+   * Death: Triggers reset_game.php, applying a 10% Gold penalty and respawning the player at their respawnNodeId.
+
+------------------------------
+## 6. Admin & Development Tools
+
+* Content Auditor: A diagnostic tool to find "Orphaned Nodes," broken links, and "Linguistic Holes" (missing translations).
+* Visualizer: A color-coded grid-map for a bird's-eye view of world health and save-point pacing.
+* The Auto-Mapper: Automatically calculates X, Y, Z coordinates for the minimap based on directional links.
+
+------------------------------
+## Engineering Summary of Updates
+
+   1. Moved speakText to ui.js to isolate the microphone logic.
+   2. Added init.php to centralize security and database connections.
+   3. Refined speech.js into a "Dispatcher" that sends strings to the Engine rather than deciding logic.
+   4. Integrated a multi-character account system via the Users table.
+   5. Hardened Combat by moving all damage math to the PHP server.
+7. World Authority Modes & Multiplayer Vision
+Lingua Quest is designed around the concept of World Authority Scoping, allowing the game to support both isolated single‑player experiences and future shared multiplayer sessions without altering core gameplay logic.
+The system supports multiple modes of play, defined before gameplay begins, to ensure clarity, fairness, and architectural consistency.
+
+7.1 Single‑Player Mode (Private World Instance)
+
+This is the default mode of play.
+Each character exists within a fully isolated world instance.
+World state (NPC health, item placement, dead bodies, discovered rooms) is scoped exclusively to the active character.
+Other players may be logged into the site simultaneously without any interaction or shared effects.
+All existing mechanics—combat, roaming NPCs, loot, death, and checkpoints—function exactly as defined in the current architecture.
+
+This mode prioritizes:
+
+Solo immersion
+Independent progression
+Language‑learning at the player’s own pace
+
+
+7.2 Shared Session Mode (Quest Group / Cooperative World Instance) — Future Feature
+Lingua Quest is architected to support a future Shared Session Mode, where multiple players participate in the same authoritative world instance.
+Core Characteristics
+
+Players voluntarily opt into a Quest Group before entering the game world.
+All participants experience:
+
+Shared NPC states
+Shared item drops and loot persistence
+Shared environmental changes
+Shared consequences of combat, exploration, and dialogue
+
+
+Player actions affect the world globally within the session and are immediately observable by other group members.
+
+This mode emphasizes:
+
+Cooperative problem solving
+Spoken French practice in a social context
+Shared narrative progression
+
+
+7.3 Quest Group Formation & Entry Rules
+
+Multiplayer participation is explicit and opt‑in.
+Players must choose their mode before gameplay begins.
+Quest Groups are formed via:
+
+Creating a new group (hosted by a player)
+Joining an existing group via visible lobby or join code
+
+
+Players spawn together at a common starting node when the session begins.
+
+Group Size Constraints
+
+Quest Groups are deliberately size‑limited to maintain clarity, balance, and system stability.
+Recommended group size:
+
+Minimum: 2 players
+Optimal: 3–4 players
+Hard cap: 5 players
+
+
+
+Group size limits prevent:
+
+Combat chaos
+UI overload
+Language‑learning dilution
+Excessive state conflicts
+
+
+7.4 World Authority Model
+Lingua Quest uses a single authoritative server model regardless of mode.
+
+All gameplay outcomes are adjudicated by PHP backend judges.
+Frontend managers (engine.js, ui.js, speech.js, combat.js) remain presentation‑only.
+Multiplayer mode does not introduce client authority or peer‑to‑peer trust.
+
+The only distinction between modes is where world state is scoped:
+
+Single‑Player: Character‑scoped world authority
+Shared Session: Quest‑group‑scoped world authority
+
+No core gameplay systems (combat, movement, dialogue, NPC behavior) require separate logic branches.
+
+7.5 Combat & Interaction in Shared Sessions
+
+Combat continues to follow the same turn‑based arena model.
+Players, recruited NPC allies, and hostile NPCs are treated uniformly as combat actors.
+Damage resolution, courage checks, fleeing behavior, and victory processing remain server‑driven.
+Mid‑combat joining is explicitly disallowed to preserve deterministic combat resolution.
+
+
+7.6 Join & Persistence Constraints
+
+Players may join an active Quest Group only during exploration phases.
+Joining during combat or critical scripted events is prohibited.
+NPC deaths, item drops, and environmental changes persist for all participants in the session.
+Player death affects only the deceased character, following standard death rules, without resetting the shared world.
+
+
+7.7 Design Intent
+The multiplayer system is intentionally:
+
+Cooperative, not competitive
+Instance‑based, not MMO‑style
+Architecturally compatible with existing systems
+Optional and non‑intrusive to single‑player users
+
+This approach ensures Lingua Quest remains:
+
+Fully playable as a solo language‑learning RPG
+Naturally extensible into shared learning experiences
+Resistant to architectural rework as features expand
+
+====================================================================================
+VOXBOUND Entry Experience Addendum (v2.6)
+This addendum formally documents the VOXBOUND entry experience and onboarding flow. It refines and extends the Lingua Quest Project Bible (v2.5) to incorporate branding, user experience, and onboarding decisions made after the VOXBOUND rebrand.
+
+
+1. Purpose of This Addendum
+This addendum defines the official player entry flow into VOXBOUND. It standardizes how new and returning players:
+
+Access the system
+Authenticate or create an account
+Initialize a character
+Calibrate and practice the Voice Command Interface
+Transition into the live game world
+These rules are authoritative and should be treated as part of the core system design.
+
+
+2. High-Level Entry Flow (Authoritative)
+The VOXBOUND entry experience consists of three distinct phases, with explicit boundaries between them:
+
+System Access & Authentication (index.php)
+Character Initialization (index.php)
+Guided Voice Preview / Calibration (Intermediate Step) Optional for returning players
+Mandatory display (but skippable)
+Successful completion or bypass of the Guided Voice Preview transitions the player into the live game world (adventure.php).
+
+
+3. Role of index.php
+Conceptual Role
+index.php functions as the System Access Terminal for VOXBOUND.
+It is not:
+
+The game world
+A marketing landing page
+A tutorial environment
+It is:
+
+The authoritative entry point
+A procedural, guided setup interface
+Calm, confident, and explicit in its instructions
+Tone requirements:
+
+Clear
+Trustworthy
+Instructional
+Non-mysterious
+
+
+4. Step-by-Step Flow in index.php
+Step 1: Account Access (Explicit)
+Label: STEP 1: ACCOUNT ACCESS
+Purpose:
+
+Authenticate an existing user
+Or create a new account
+Design requirements:
+
+Only authentication controls visible at this stage
+No character or gameplay controls visible yet
+Clear system messaging (e.g., "Authentication required")
+
+
+Step 2: Character Initialization (Explicit)
+Label: STEP 2: CHARACTER INITIALIZATION
+Visibility:
+
+Appears only after successful authentication
+Purpose:
+
+Create or select a character
+Display and configure character attributes
+Requirements:
+
+Explicit stat display (HP, STR, AGI, CHA, etc.)
+Reroll and confirmation controls
+Clear confirmation action to finalize character creation
+Upon confirmation, the system transitions the player to the Guided Voice Preview step.
+
+
+5. Guided Voice Preview (Intermediate Step)
+Structural Rule
+The Guided Voice Preview is a separate step, not embedded inside index.php.
+Purpose:
+
+Prepare the player for VOXBOUND’s voice-driven mechanics
+Verify microphone permissions and browser STT functionality
+Build player confidence before consequences exist
+
+
+Guided Voice Preview: Default Experience (New Players)
+Title: VOICE INTERFACE CALIBRATION
+System Explanation (Plain Language):
+
+VOXBOUND responds to spoken commands
+Speech accuracy determines outcomes
+This preview contains no penalties or permanent effects
+
+
+Voice Practice Session
+The Guided Voice Preview includes a practice loop consisting of simple French words or phrases:
+Examples:
+
+"Bonjour"
+"Oui"
+"Je suis prêt"
+Workflow per phrase:
+
+TTS (Text-to-Speech) reads the phrase aloud
+The player repeats the phrase using the STT interface
+The system evaluates similarity and provides immediate on-screen feedback
+Feedback includes:
+
+Recognition confirmation
+Pronunciation tier (e.g., Bien, Parfait)
+Calm, encouraging system messaging
+No world state, character stats, or rewards are affected by this step.
+
+
+Veteran Player Controls
+At all times during the Guided Voice Preview, a bypass option must be available:
+
+Skip Calibration or Go To Game button
+Rules:
+
+The skip option is always visible
+It is visually de-emphasized but accessible
+Veteran players are never forced to repeat calibration
+
+
+6. Transition Into the Game World
+After either:
+
+Completing the Guided Voice Preview, or
+Choosing to skip it
+The system displays a brief confirmation message (e.g., "Voice interface ready") and transitions the player into the live game world (adventure.php).
+At this point:
+
+The system stops instructing
+The system begins enforcing rules and consequences
+
+
+7. Architectural Alignment Notes
+This entry experience:
+
+Reuses existing STT/TTS infrastructure
+Does not require new database schema
+Does not mutate world or character state during calibration
+Preserves server authority and Judge/Manager separation
+Scales cleanly to future features (multiplayer, classrooms, group sessions)
+
+
+8. Status
+This addendum is authoritative and should be considered part of the official VOXBOUND / Lingua Quest Project Bible going forward.
+Version label for reference: Lingua Quest Project Bible – Addendum: VOXBOUND Entry Experience (v2.6)

@@ -1,0 +1,62 @@
+/* admin-base.css - Styles specific to the Admin Dashboard page */
+/* ADMIN-SPECIFIC LAYOUT */
+.admin-view-wrapper {
+    background-color: var(--primary-cyan); /* The big neon block from your image */
+    display: flex;
+    padding: 20px;
+    min-height: 500px;
+    border-radius: 4px;
+    gap: 15px;
+}
+
+/* THE BLACK CONSOLE */
+.admin-console {
+    background-color: #000;
+    color: var(--accent-gold);
+    flex: 3; /* Takes up most of the room */
+    padding: 25px;
+    border: 1px solid #333;
+    overflow-y: auto;
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.admin-console .highlight-red {
+    color: #ff5555; /* For section headers like "1. FIELD AUDIT" */
+    font-weight: bold;
+}
+
+/* THE SIDEBAR BUTTON AREA */
+.admin-sidebar {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Splits top and bottom button groups */
+    padding: 10px;
+}
+
+.admin-btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* THE SHARP BLACK BUTTONS */
+.btn-admin-solid {
+    background-color: #000;
+    color: #fff;
+    border: 1px solid #fff;
+    padding: 12px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: none;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.btn-admin-solid:hover {
+    background-color: #222;
+    border-color: var(--primary-cyan);
+    color: var(--primary-cyan);
+}
