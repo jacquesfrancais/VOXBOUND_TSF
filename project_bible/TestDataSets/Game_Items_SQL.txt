@@ -1,0 +1,62 @@
+-- =========================================================
+-- VOXBOUND Item & Spawner Seed Script (v2.6)
+-- Targets: ItemLibrary, WorldTemplates
+-- =========================================================
+
+-- 1. CLEAN EXISTING DATA
+SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE TABLE WorldTemplates;
+TRUNCATE TABLE ItemLibrary;
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- 2. POPULATE ITEM LIBRARY (The Master Definitions)
+INSERT INTO ItemLibrary (itemId, nameFrench, nameEnglish, itemType, baseValue, weight, extraData) VALUES
+-- Ally Gear
+(1, 'Épée de Justice', 'Sword of Justice', 'Weapon', 500, 5.00, '{"strBonus": 8, "owner": "Kaelen"}'),
+(2, 'Dagues Jumelles', 'Twin Daggers', 'Weapon', 350, 1.50, '{"agiBonus": 5, "strBonus": 3, "owner": "Lyra"}'),
+(3, 'Bouclier de Rempart', 'Bulwark Shield', 'Armor', 400, 10.00, '{"armorValue": 15, "owner": "Kaelen"}'),
+(4, 'Armure de Cuir Souple', 'Supple Leather Armor', 'Armor', 250, 4.00, '{"armorValue": 5, "agiBonus": 2, "owner": "Lyra"}'),
+
+-- Monster Natural Weapons (Non-lootable)
+(5, 'Mandibules Serrées', 'Serrated Mandibles', 'Weapon', 0, 0.00, '{"strBonus": 6, "lootable": false}'),
+(6, 'Serres de Chitine', 'Chitin Talons', 'Weapon', 0, 0.00, '{"agiBonus": 4, "lootable": false}'),
+
+-- Player Starting Gear
+(7, 'Épée Courte Rouillée', 'Rusty Shortsword', 'Weapon', 50, 3.00, '{"strBonus": 3}'),
+(8, 'Tunique en Laine', 'Woolen Tunic', 'Armor', 20, 1.00, '{"armorValue": 1}'),
+
+-- Consumables & Quest Items
+(9, 'Sachet de Sel', 'Pouch of Salt', 'Quest', 10, 0.50, '{"targetNpc": "Deep-Gnome"}'),
+(10, 'Potion de Soins', 'Healing Potion', 'Consumable', 100, 0.50, '{"hpRestore": 30}'),
+
+-- Treasure/Loot
+(11, 'Quartz d''Éther', 'Aether-Quartz', 'Treasure', 250, 2.00, '{"glow": true}'),
+(12, 'Fragment de Chitine', 'Chitin Fragment', 'Treasure', 15, 0.20, '{"material": true}');
+
+-- 3. POPULATE WORLD TEMPLATES (The Initial Spawning Map)
+INSERT INTO WorldTemplates (itemId, ownerType, ownerId) VALUES
+-- Equip Kaelen (Npc 1)
+(1, 'NPC', 1), 
+(3, 'NPC', 1), 
+
+-- Equip Lyra (Npc 2)
+(2, 'NPC', 2), 
+(4, 'NPC', 2), 
+
+-- Equip Monsters (Npcs 6, 7, 8, 9) with Natural Weapons
+(5, 'NPC', 6), (6, 'NPC', 6),
+(5, 'NPC', 7), (6, 'NPC', 7),
+(5, 'NPC', 8), (6, 'NPC', 8),
+(5, 'NPC', 9), (6, 'NPC', 9),
+
+-- Place Items in Rooms (Locations)
+(9, 'Room', 102),  -- Salt pouch found in the Tavern
+(11, 'Room', 120), -- Quartz found in the Treasure Vault
+
+-- Player Starting Kit (Global Template)
+(7, 'Player', NULL), 
+(8, 'Player', NULL);
+
+-- FINAL AUDIT
+SELECT 'Items Defined' as Status, COUNT(*) FROM ItemLibrary;
+SELECT 'Templates Created' as Status, COUNT(*) FROM WorldTemplates;
