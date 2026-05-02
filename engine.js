@@ -4,6 +4,9 @@
  * Game Engine Logic
  */
 
+let currentLanguage = 'fr'; // 'fr' or 'en'
+let lastRoomData = null;    // Cache for the current room's bilingual data
+
 /**
  * Updates the Stage (HTML) with the Truth (Data) provided by the Judges.
  * Handles room descriptions, entity lists, and character stats.
@@ -11,20 +14,25 @@
  */
 function updateUI(data) {
     if (!data) return;
+    lastRoomData = data;
 
     console.log("[ENGINE DEBUG] Updating UI with incoming data packet.");
 
     // 1. Update Identity & Location
-    const locationLabel = document.getElementById('location-label');
-    if (locationLabel && data.nodeId) {
-        locationLabel.textContent = `Location ID: ${data.nodeId}`;
+    const locationDisplay = document.getElementById('location-id-display');
+    if (locationDisplay && data.title) {
+        locationDisplay.textContent = data.title;
     }
 
     // 2. Update Narrative Description
+    const descText = (currentLanguage === 'fr') ? data.descriptionFr : data.descriptionEn;
     const roomDesc = document.getElementById('room-description');
-    if (roomDesc && data.description) {
+    if (roomDesc && descText) {
         // Using innerHTML allows the Judge to send <br> tags or formatted terminal text
-        roomDesc.innerHTML = `&gt; ${data.description}`;
+        roomDesc.innerHTML = `&gt; ${descText}`;
+
+        // Bible Section 3: Audio Support - Read the new description aloud via ui.js
+        if (window.VoxUI && currentLanguage === 'fr') window.VoxUI.speakText(data.descriptionFr);
     }
 
     // 3. Update NPC List (Entities)
@@ -35,7 +43,8 @@ function updateUI(data) {
             data.npcs.forEach(npc => {
                 const li = document.createElement('li');
                 li.style.cursor = "help";
-                li.innerHTML = `• <span style="color:var(--accent-gold)">[PARLER]</span> ${npc.npcNameFrench}`;
+                const name = (currentLanguage === 'fr') ? npc.npcNameFrench : npc.npcNameEnglish;
+                li.innerHTML = `• <span style="color:var(--accent-gold)">[PARLER]</span> ${name}`;
                 npcList.appendChild(li);
             });
         }
@@ -48,7 +57,8 @@ function updateUI(data) {
         if (data.items && data.items.length > 0) {
             data.items.forEach(item => {
                 const li = document.createElement('li');
-                li.textContent = `[ ] ${item}`;
+                const name = (currentLanguage === 'fr') ? item.nameFrench : item.nameEnglish;
+                li.textContent = `[ ] ${name}`;
                 objectList.appendChild(li);
             });
         }
@@ -74,6 +84,9 @@ function updateUI(data) {
             }
         });
     }
+
+    // 7. Update Mini-Map
+    updateMiniMap(data);
 }
 
 /**
@@ -128,3 +141,71 @@ function initializeGame() {
 
 // Trigger initialization when the window finishes loading the DOM
 document.addEventListener('DOMContentLoaded', initializeGame);
+
+/**
+ * Re-triggers the Text-to-Speech narration for the current room description.
+ */
+function replayRoomDescription() {
+    const roomDesc = document.getElementById('room-description');
+    if (roomDesc && window.VoxUI) {
+        console.log("[ENGINE DEBUG] Manually re-triggering room narration.");
+        // Strip the leading ">" prompt character before sending to the TTS engine
+        const text = roomDesc.textContent.replace(/^>\s*/, '');
+        window.VoxUI.speakText(text);
+    }
+}
+
+/**
+ * Toggles the UI between French and English and re-renders the current room content.
+ */
+function toggleLanguage() {
+    currentLanguage = (currentLanguage === 'fr') ? 'en' : 'fr';
+    console.log(`[ENGINE DEBUG] UI Language toggled to: ${currentLanguage}`);
+    if (lastRoomData) {
+        updateUI(lastRoomData);
+    }
+}
+
+/**
+ * Renders a relative 7x7 grid centered on the player's map coordinates.
+ */
+function updateMiniMap(data) {
+    const grid = document.getElementById('mini-map-grid');
+    if (!grid || !data.mapNodes) return;
+
+    grid.replaceChildren(); // Faster and cleaner than innerHTML = ''
+    console.log(`[ENGINE DEBUG] Rendering map for Node ${data.nodeId}. Discovered nodes: ${data.mapNodes.length}`);
+    
+    // Find current node coords
+    // Default to (0,0,0) if the current room isn't found or mapped yet
+    const current = (data.mapNodes || []).find(n => n.nodeId == data.nodeId);
+    if (!current) console.warn(`[ENGINE DEBUG] Current Node ${data.nodeId} NOT found in discovered mapNodes.`);
+    
+    // Use Number() to ensure we are doing math, not string concatenation
+    const centerX = current ? Number(current.mapX) : 0;
+    const centerY = current ? Number(current.mapY) : 0;
+    const centerZ = current ? Number(current.mapZ) : 0;
+    const range = 3; // Render a 7x7 grid centered on player
+
+    console.log(`[ENGINE DEBUG] Map Center: (${centerX}, ${centerY}, ${centerZ})`);
+
+    // Filter discovered nodes to only those on the same vertical level
+    const levelNodes = (data.mapNodes || []).filter(n => Number(n.mapZ) === centerZ);
+
+    for (let y = centerY - range; y <= centerY + range; y++) {
+        for (let x = centerX - range; x <= centerX + range; x++) {
+            const cell = document.createElement('div');
+            cell.className = 'map-cell';
+            
+            const node = levelNodes.find(n => Number(n.mapX) === x && Number(n.mapY) === y);
+            if (node) {
+                cell.classList.add('active');
+                cell.setAttribute('data-title', node.title || 'Unknown');
+                if (node.nodeId == data.nodeId) {
+                    cell.classList.add('current');
+                }
+            }
+            grid.appendChild(cell);
+        }
+    }
+}

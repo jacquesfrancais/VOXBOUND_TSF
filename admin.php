@@ -1,3 +1,27 @@
+<?php
+/**
+ * admin.php
+ * VOXBOUND: The Spoken Frontier
+ * Admin dashboard for system diagnostics.
+ */
+
+session_start();
+require_once __DIR__ . '/db_config.php';
+
+// 1. ADMIN SHIELD
+if (!isset($_SESSION['user_id'])) {
+    header('Location: index.php');
+    exit;
+}
+
+$adminCheck = $pdo->prepare("SELECT isAdmin FROM Users WHERE userId = :id");
+$adminCheck->execute(['id' => $_SESSION['user_id']]);
+$isAdmin = $adminCheck->fetchColumn();
+
+if (!$isAdmin) {
+    die("ACCESS DENIED: Administrative privileges required.");
+}
+?>
 <!-- admin.php - Admin dashboard for system diagnostics and management of the Lingua Quest French Learning RPG -->
 <!DOCTYPE html>
 <html lang="en">
@@ -31,13 +55,16 @@
             
             <p><span class="highlight-red">2. PATH AUDIT</span><br>
             Verifies all navigation routes are reachable.</p>
+
+            <p><span class="highlight-red">3. AUTO-MAPPER</span><br>
+            Calculates X, Y coordinates for the mini-map based on directional links.</p>
         </main>
 
         <!-- RIGHT: ACTION SIDEBAR -->
         <aside class="admin-sidebar">
             <!-- TOP ACTIONS -->
             <div class="admin-btn-group">
-                <button class="btn-admin-solid">Audit Database</button>
+                <a href="auto_mapper.php" class="btn-admin-solid" style="text-decoration: none; text-align: center;">Run Auto-Mapper</a>
                 <button class="btn-admin-solid">Path Audit</button>
                 <button class="btn-admin-solid">Full Audit</button>
             </div>

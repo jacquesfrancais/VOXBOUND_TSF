@@ -78,6 +78,14 @@ try {
             'charId' => $_SESSION['character_id']
         ]);
 
+        // Mark room as discovered in State table
+        $stateStmt = $pdo->prepare("
+            INSERT INTO Character_Room_State (characterId, nodeId, isDiscovered)
+            VALUES (:charId, :nodeId, 1)
+            ON DUPLICATE KEY UPDATE isDiscovered = 1
+        ");
+        $stateStmt->execute(['charId' => $_SESSION['character_id'], 'nodeId' => $nextNodeId]);
+
         echo json_encode([
             'success' => true,
             'newNodeId' => (int)$nextNodeId,

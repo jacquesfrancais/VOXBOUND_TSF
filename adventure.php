@@ -22,6 +22,11 @@ if (!$character) {
 $adminCheck = $pdo->prepare("SELECT isAdmin FROM Users WHERE userId = :id");
 $adminCheck->execute(['id' => $_SESSION['user_id']]);
 $isAdmin = (bool)$adminCheck->fetchColumn();
+
+// Fetch Initial Location Title for the display
+$locStmt = $pdo->prepare("SELECT title FROM Locations WHERE nodeId = :nodeId");
+$locStmt->execute(['nodeId' => $character['currentLocationID']]);
+$locTitle = $locStmt->fetchColumn() ?: "Unknown Location";
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -50,7 +55,11 @@ $isAdmin = (bool)$adminCheck->fetchColumn();
         
         <!-- LEFT: STORY & TEXT -->
         <section class="console-box" id="game-console">
-            <div class="title-label" id="location-label">Location ID: <?= (int)$character['currentLocationID'] ?></div>
+            <div class="title-label" id="location-label">
+                Location: <span id="location-id-display"><?= htmlspecialchars($locTitle) ?></span>
+                <button class="btn-outline" onclick="replayRoomDescription()" style="font-size: 0.6rem; margin-left: 10px; padding: 2px 5px; vertical-align: middle;">READ ALOUD</button>
+                <button class="btn-outline" onclick="toggleLanguage()" style="font-size: 0.6rem; margin-left: 5px; padding: 2px 5px; vertical-align: middle;">TRANSLATE</button>
+            </div>
             
             <div id="room-description" style="color: var(--accent-gold); line-height: 1.6; margin-bottom: 20px;">
                 &gt; INITIALIZING ENVIRONMENT...<br>
@@ -105,11 +114,20 @@ $isAdmin = (bool)$adminCheck->fetchColumn();
                     </div>
                 </div>
             </div>
+
+            <div class="console-box">
+                <div class="title-label" style="display: flex; justify-content: space-between;">
+                    <span>Mini-Map</span>
+                    <span style="font-size: 0.6rem; color: #444;">7x7 SENSOR RANGE</span>
+                </div>
+                <div id="mini-map-grid"></div>
+            </div>
         </aside>
 
     </main>
 
     <!-- LOAD ENGINE LOGIC -->
+    <script src="ui.js"></script>
     <script src="engine.js"></script>
 </body>
 </html>

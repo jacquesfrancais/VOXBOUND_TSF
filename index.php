@@ -160,6 +160,13 @@ if (
         $spawnStmt->execute(['charId' => $newCharId]);
         error_log("[INDEX DEBUG] Spawned " . $spawnStmt->rowCount() . " NPCs into Character_NPC_State.");
 
+        // Initialize Room State for starting location
+        $roomStateStmt = $pdo->prepare("
+            INSERT INTO Character_Room_State (characterId, nodeId, isDiscovered)
+            VALUES (:charId, 101, 1)
+        ");
+        $roomStateStmt->execute(['charId' => $newCharId]);
+
         header('Location: voice_calibration.php');
         exit;
     }
