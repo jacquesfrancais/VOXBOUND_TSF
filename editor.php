@@ -28,7 +28,9 @@ if (!$isAdmin) {
 $allowedTables = [
     'Locations'   => 'nodeId',
     'Npcs'        => 'npcId',
-    'ItemLibrary' => 'itemId'
+    'ItemLibrary' => 'itemId',
+    'Characters'  => 'id',
+    'Users'       => 'userId'
 ];
 
 $currentTable = $_GET['table'] ?? 'Locations';
@@ -37,38 +39,156 @@ if (!array_key_exists($currentTable, $allowedTables)) {
 }
 $primaryKey = $allowedTables[$currentTable];
 
-// 3. HANDLE UPDATES (The Judge)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update') {
-    $idToUpdate = $_POST[$primaryKey];
-    $updateFields = [];
-    $params = [':id' => $idToUpdate];
-
-    // Dynamically build the UPDATE query based on POST keys
-    foreach ($_POST as $key => $value) {
-        // Skip internal form controls
-        if (in_array($key, ['action', $primaryKey])) continue;
-        
-        $updateFields[] = "$key = :$key";
-        $params[":$key"] = $value;
+// 3. HANDLE UPDATES, INSERTS & DELETES (The Judge)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    $action = $_POST['action'];
+    
+    if ($action === 'delete' && isset($_POST[$primaryKey])) {
+        $idToDelete = $_POST[$primaryKey];
+        $stmt = $pdo->prepare("DELETE FROM $currentTable WHERE $primaryKey = :id");
+        $stmt->execute(['id' => $idToDelete]);
+        header("Location: editor.php?table=$currentTable&deleted=1");
+        exit;
     }
 
-    $sql = "UPDATE $currentTable SET " . implode(', ', $updateFields) . " WHERE $primaryKey = :id";
-    $updateStmt = $pdo->prepare($sql);
-    $updateStmt->execute($params);
-    
-    header("Location: editor.php?table=$currentTable&success=1");
-    exit;
+    if ($action === 'update' || $action === 'insert') {
+        $fields = [];
+        $params = [];
+
+        foreach ($_POST as $key => $value) {
+            if ($key === 'action') continue;
+            // Skip Primary Key during updates to prevent changing IDs
+            if ($action === 'update' && $key === $primaryKey) continue;
+            // Skip Primary Key during inserts if empty (let DB auto-increment handle it)
+            if ($action === 'insert' && $key === $primaryKey && empty($value)) continue;
+            
+            $fields[] = $key;
+            $params[":$key"] = $value;
+        }
+
+        if ($action === 'update') {
+            $setClause = implode(', ', array_map(fn($f) => "$f = :$f", $fields));
+            $params[':target_id'] = $_POST[$primaryKey];
+            $sql = "UPDATE $currentTable SET $setClause WHERE $primaryKey = :target_id";
+        } else {
+            $cols = implode(', ', $fields);
+            $vals = implode(', ', array_map(fn($f) => ":$f", $fields));
+            $sql = "INSERT INTO $currentTable ($cols) VALUES ($vals)";
+        }
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        
+        header("Location: editor.php?table=$currentTable&success=1");
+        exit;
+    }
 }
 
-// 4. FETCH EDIT TARGET
+// 3.5 HANDLE EXPORT (The Judge)
+if (isset($_GET['export'])) {
+    // Fetch all records for the currently selected table
+    $stmt = $pdo->query("SELECT * FROM $currentTable ORDER BY $primaryKey ASC");
+    $exportRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (!empty($exportRows)) {
+        $filename = strtolower($currentTable) . "_export_" . date('Y-m-d_His') . ".tsv";
+
+        // Set headers to force file download as TSV
+        header('Content-Type: text/tab-separated-values');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $out = fopen('php://output', 'w');
+        // Write column headers as the first line
+        fputcsv($out, array_keys($exportRows[0]), "\t", '"', "\\");
+        // Write data rows
+        foreach ($exportRows as $row) {
+            fputcsv($out, $row, "\t", '"', "\\");
+        }
+        fclose($out);
+        exit;
+    }
+}
+
+// 3.6 HANDLE IMPORT (The Judge)
+// 3.6 HANDLE IMPORT (The Judge)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'import' && isset($_FILES['tsv_file'])) {
+    $file = $_FILES['tsv_file'];
+
+    // Check for upload errors
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        die("UPLOAD ERROR: System returned error code " . $file['error']);
+    }
+
+    if (is_uploaded_file($file['tmp_name'])) {
+        $handle = fopen($file['tmp_name'], 'r');
+
+        // Detect and strip UTF-8 BOM if present
+        $bom = fread($handle, 3);
+        if ($bom !== "\xEF\xBB\xBF") {
+            rewind($handle);
+        }
+
+        $headers = fgetcsv($handle, 0, "\t", '"', "\\");
+
+        if ($headers) {
+            $pdo->beginTransaction();
+            try {
+                while (($data = fgetcsv($handle, 0, "\t", '"', "\\")) !== FALSE) {
+                    // Skip empty lines or data mismatches
+                    if (empty($data) || count($data) !== count($headers)) continue;
+
+                    $row = array_combine($headers, $data);
+
+                    // Backtick column names to prevent reserved word conflicts
+                    $cols = implode(', ', array_map(fn($k) => "`$k`", $headers));
+                    $placeholders = implode(', ', array_map(fn($k) => ":$k", $headers));
+
+                    // Build the ON DUPLICATE KEY UPDATE clause
+                    $updateParts = [];
+                    foreach ($headers as $key) {
+                        if ($key === $primaryKey) continue;
+                        $updateParts[] = "`$key` = VALUES(`$key`)";
+                    }
+                    $updateClause = implode(', ', $updateParts);
+
+                    $sql = "INSERT INTO `$currentTable` ($cols) VALUES ($placeholders) 
+                            ON DUPLICATE KEY UPDATE $updateClause";
+
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($row);
+                }
+                $pdo->commit();
+                fclose($handle);
+                header("Location: editor.php?table=$currentTable&imported=1");
+                exit;
+            } catch (Exception $e) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                fclose($handle);
+                die("IMPORT ERROR: " . $e->getMessage());
+            }
+        }
+        fclose($handle);
+    }
+}
+
+// 4. FETCH EDIT TARGET OR INITIALIZE NEW (The Manager's Data)
 $editRow = null;
+$isAdding = isset($_GET['add']);
+
 if (isset($_GET['edit'])) {
     $editStmt = $pdo->prepare("SELECT * FROM $currentTable WHERE $primaryKey = :id");
     $editStmt->execute(['id' => $_GET['edit']]);
     $editRow = $editStmt->fetch(PDO::FETCH_ASSOC);
+} elseif ($isAdding) {
+    // Generate an empty row based on table schema for the "Add" form
+    $q = $pdo->query("DESCRIBE $currentTable");
+    $columns = $q->fetchAll(PDO::FETCH_COLUMN);
+    $editRow = array_fill_keys($columns, '');
 }
 
-// 3. DATA FETCHING
+// 5. DATA FETCHING
 // Get all rows for the current table
 $stmt = $pdo->query("SELECT * FROM $currentTable ORDER BY $primaryKey ASC");
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -160,14 +280,17 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <?php if ($editRow): ?>
                 <!-- EDIT INTERFACE -->
                 <div style="margin-bottom: 40px; border: 1px solid var(--accent-gold); padding: 20px;">
-                    <h3 style="color: var(--accent-gold); margin-top: 0;">EDITING ENTRY: <?= htmlspecialchars($editRow[$primaryKey]) ?></h3>
+                    <h3 style="color: var(--accent-gold); margin-top: 0;">
+                        <?= $isAdding ? 'ADDING NEW ENTRY' : 'EDITING ENTRY: ' . htmlspecialchars($editRow[$primaryKey]) ?>
+                    </h3>
                     <form method="POST">
-                        <input type="hidden" name="action" value="update">
+                        <input type="hidden" name="action" value="<?= $isAdding ? 'insert' : 'update' ?>">
                         <input type="hidden" name="<?= $primaryKey ?>" value="<?= htmlspecialchars($editRow[$primaryKey]) ?>">
                         
                         <div class="edit-form-grid">
                             <?php foreach ($editRow as $column => $value): ?>
-                                <?php if ($column === $primaryKey) continue; ?>
+                                <?php // Hide PK field in Edit mode, show in Add mode if it's not auto-incrementing (like Locations) ?>
+                                <?php if (!$isAdding && $column === $primaryKey) continue; ?>
                                 <div>
                                     <label><?= htmlspecialchars($column) ?></label>
                                     <?php if (strpos($column, 'text') !== false || strpos($column, 'greeting') !== false): ?>
@@ -179,7 +302,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <?php endforeach; ?>
                         </div>
                         <div style="margin-top: 20px; display:flex; gap: 10px;">
-                            <button class="btn-neon">SAVE CHANGES</button>
+                            <button class="btn-neon"><?= $isAdding ? 'CREATE ENTRY' : 'SAVE CHANGES' ?></button>
                             <a href="?table=<?= $currentTable ?>" class="btn-outline" style="text-decoration:none; display:inline-block; line-height:30px;">CANCEL</a>
                         </div>
                     </form>
@@ -205,6 +328,11 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <?php endforeach; ?>
                             <td>
                                 <a href="?table=<?= $currentTable ?>&edit=<?= $row[$primaryKey] ?>" class="btn-outline" style="font-size: 0.6rem; padding: 2px 5px; text-decoration:none;">EDIT</a>
+                                <form method="POST" style="display:inline;" onsubmit="return confirm('CRITICAL: Permanent deletion of system data requested. Confirm erasure?');">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="<?= $primaryKey ?>" value="<?= htmlspecialchars($row[$primaryKey]) ?>">
+                                    <button type="submit" class="btn-outline" style="font-size: 0.6rem; padding: 2px 5px; color: #ff5555; border-color: #ff5555; cursor:pointer;">DELETE</button>
+                                </form>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -215,9 +343,19 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <!-- RIGHT: EDITOR ACTIONS -->
         <aside class="admin-sidebar">
             <div class="admin-btn-group">
-                <button class="btn-admin-solid" style="border-color: var(--accent-gold); color: var(--accent-gold);">+ ADD NEW ENTRY</button>
-                <button class="btn-admin-solid">EXPORT TSV</button>
-                <button class="btn-admin-solid">IMPORT DATA</button>
+                <a href="?table=<?= $currentTable ?>&add=1" class="btn-admin-solid" style="border-color: var(--accent-gold); color: var(--accent-gold); text-decoration:none; display:block; text-align:center;">
+                    + ADD NEW ENTRY
+                </a>
+                <a href="?table=<?= $currentTable ?>&export=1" class="btn-admin-solid" onclick="return confirm('SYSTEM: Confirm data stream request? This will generate a TSV download of the currently selected table.');" style="text-decoration:none; display:block; text-align:center;">
+                    EXPORT TSV
+                </a>
+                <form method="POST" enctype="multipart/form-data" style="margin:0;">
+                    <input type="hidden" name="action" value="import">
+                    <label class="btn-admin-solid" style="display:block; text-align:center; cursor:pointer;">
+                        IMPORT TSV
+                        <input type="file" name="tsv_file" accept=".tsv,.txt" style="display:none;" onchange="this.form.submit()">
+                    </label>
+                </form>
             </div>
 
             <div class="admin-btn-group">
