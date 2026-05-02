@@ -23,9 +23,10 @@ navbar.php
 process_combat.php
 content_auditor.php
 init.php
+voice_calibration.php
 
 <DATA>
-lingua_quest_db_schema_v2-1.sql
+voxbound_fr_db_schema_v2-1.sql
 
 <WEBSITE>
 admin-base.css

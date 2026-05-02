@@ -63,3 +63,11 @@ body {
   padding: 5px 10px;
   cursor: pointer;
 }
+
+/* DIMMED STATE: For disconnected directions */
+.btn-neon:disabled {
+  opacity: 0.15;
+  filter: grayscale(1);
+  cursor: not-allowed;
+  box-shadow: none;
+}

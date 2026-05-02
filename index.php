@@ -15,6 +15,7 @@ $errorMessage = '';
 
 $existingCharacterId = null;
 $characterData = null;
+$isAdmin = false;
 
 if ($isAuthenticated) {
     $stmt = $pdo->prepare(
@@ -30,6 +31,11 @@ if ($isAuthenticated) {
             $_SESSION['character_id'] = $existingCharacterId;
         }
     }
+
+    // Admin check for restricted navbar links
+    $adminCheck = $pdo->prepare("SELECT isAdmin FROM Users WHERE userId = :id");
+    $adminCheck->execute(['id' => $_SESSION['user_id']]);
+    $isAdmin = (bool)$adminCheck->fetchColumn();
 }
 
 /* --------------------------------------------------
@@ -139,7 +145,21 @@ if (
             'ownerId' => $_SESSION['username']
         ]);
 
-        $_SESSION['character_id'] = $pdo->lastInsertId();
+        $newCharId = $pdo->lastInsertId();
+        $_SESSION['character_id'] = $newCharId;
+
+        // Debugging for NPC Spawner
+        error_log("[INDEX DEBUG] Attempting to spawn NPCs for new character ID: $newCharId");
+
+        // INITIALIZE NPC STATE (The Spawner)
+        // This copies the library defaults into the character's specific world instance
+        $spawnStmt = $pdo->prepare("
+            INSERT INTO Character_NPC_State (characterId, npcId, currentLocationId, currentHitPoints)
+            SELECT :charId, npcId, homeNodeId, maxHitPoints FROM Npcs
+        ");
+        $spawnStmt->execute(['charId' => $newCharId]);
+        error_log("[INDEX DEBUG] Spawned " . $spawnStmt->rowCount() . " NPCs into Character_NPC_State.");
+
         header('Location: voice_calibration.php');
         exit;
     }
@@ -211,10 +231,18 @@ if (
 </head>
 <body>
 
-<!-- TOP SYSTEM BAR -->
-<nav style="display:flex; justify-content: center; padding: 20px; background: #161b22; border-bottom: 1px solid #333;">
-    <div style="color: var(--primary-cyan); font-weight: bold; letter-spacing: 2px;">
-        VOXBOUND SYSTEM ACCESS
+<!-- TOP NAVIGATION BAR -->
+<nav style="display:flex; justify-content: space-between; padding: 20px 40px; background: #161b22; border-bottom: 1px solid #333;">
+    <div style="color: var(--primary-cyan); font-weight: bold; letter-spacing: 1px;">VOXBOUND SYSTEM ACCESS</div>
+    <div style="display:flex; gap: 30px;">
+        <a href="index.php" style="color:var(--primary-cyan); text-decoration:none;">HOME</a>
+        <?php if ($isAuthenticated && $hasCharacter): ?>
+            <a href="adventure.php" style="color:white; text-decoration:none;">ADVENTURE</a>
+        <?php endif; ?>
+        <?php if ($isAdmin): ?>
+            <a href="admin.php" style="color:white; text-decoration:none;">ADMIN</a>
+            <a href="editor.php" style="color:white; text-decoration:none;">EDITOR</a>
+        <?php endif; ?>
     </div>
 </nav>
 
