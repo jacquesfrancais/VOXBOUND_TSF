@@ -43,10 +43,11 @@ class VoxBoundSpeech {
             const confidence = event.results[0][0].confidence;
             console.log(`[SPEECH DEBUG] Raw Result: "${spoken}" (Confidence: ${confidence.toFixed(2)})`);
 
-            const score = this.calculateSimilarity(targetPhrase.toLowerCase(), spoken.toLowerCase());
+            // If no targetPhrase is provided, we skip similarity and treat as a successful capture
+            const score = targetPhrase ? this.calculateSimilarity(targetPhrase.toLowerCase(), spoken.toLowerCase()) : 1.0;
             
             let tier = "Pas compris";
-            if (score >= 0.95) tier = "Parfait";
+            if (!targetPhrase || score >= 0.95) tier = "Parfait";
             else if (score >= 0.75) tier = "Bien";
 
             console.log(`[SPEECH DEBUG] Similarity Score: ${score.toFixed(2)} | Tier: ${tier}`);

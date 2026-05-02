@@ -74,7 +74,7 @@ function updateUI(data) {
     }
 
     // 6. Update Navigation Controls (Dim disconnected paths)
-    const directions = ['nord', 'sud', 'est', 'ouest', 'haut', 'bas', 'entrer', 'sortir'];
+    const directions = ['nord', 'sud', 'est', 'ouest', 'remonter', 'descendre', 'pénétrer', 'sortir'];
     if (data.exits) {
         directions.forEach(dir => {
             const btn = document.getElementById(`btn-${dir}`);
@@ -167,6 +167,67 @@ function toggleLanguage() {
 }
 
 /**
+ * Activates the speech recognition to listen for a general French command.
+ * Dispatches the result to the process_command Judge.
+ */
+function startVoiceCommand() {
+    if (!window.VoxSpeech) {
+        console.error("[ENGINE] Speech system not initialized.");
+        return;
+    }
+
+    const feedbackArea = document.getElementById('command-feedback');
+    feedbackArea.innerHTML = `<span style="color:var(--primary-cyan); opacity:0.7;">&gt; [SYSTÈME] ÉCOUTE ACTIVE...</span>`;
+
+    window.VoxSpeech.captureCommand("", (result) => {
+        if (result.error) {
+            feedbackArea.innerHTML = `<span style="color:#ff5555;">&gt; ERREUR: ${result.error}</span>`;
+            return;
+        }
+
+        // Dispatch to the Command Judge
+        fetch('process_command.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                command: result.spoken,
+                score: result.score,
+                tier: result.tier
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.debug) console.table(data.debug);
+
+            // Determine color based on tier
+            let color = "#888";
+            if (result.tier === 'Parfait') color = 'var(--primary-cyan)';
+            else if (result.tier === 'Bien') color = 'var(--accent-gold)';
+
+            // Update Persistent Feedback
+            let statusHtml = `<span style="color:${color}; font-weight:bold;">&gt; ENTENDU: "${result.spoken.toUpperCase()}"</span> `;
+            statusHtml += `<span style="color:#666; font-size:0.7rem;">[QUALITÉ: ${result.tier}]</span>`;
+            
+            if (data.reward_granted > 0) {
+                statusHtml += ` <span style="color:var(--accent-gold); font-size:0.7rem;">[PRIME: +${data.reward_granted}G]</span>`;
+            }
+            feedbackArea.innerHTML = statusHtml;
+            
+            if (data.success && data.category === 'navigation') {
+                // Execute the movement identified by the Judge
+                handleMove(data.command);
+            } else if (!data.success) {
+                feedbackArea.innerHTML += ` <span style="color:#ff5555; font-size:0.7rem;">[REJETÉ]</span>`;
+            } else {
+                // For non-navigation commands, we refresh the UI to show the result
+                initializeGame();
+            }
+        })
+        .catch(err => console.error("[ENGINE] Command processing error:", err));
+    });
+}
+
+/**
  * Renders a relative 7x7 grid centered on the player's map coordinates.
  */
 function updateMiniMap(data) {
@@ -186,6 +247,12 @@ function updateMiniMap(data) {
     const centerY = current ? Number(current.mapY) : 0;
     const centerZ = current ? Number(current.mapZ) : 0;
     const range = 3; // Render a 7x7 grid centered on player
+
+    // Update Z-Level Display
+    const zDisplay = document.getElementById('z-level-display');
+    if (zDisplay) {
+        zDisplay.textContent = `Level: ${centerZ}`;
+    }
 
     console.log(`[ENGINE DEBUG] Map Center: (${centerX}, ${centerY}, ${centerZ})`);
 

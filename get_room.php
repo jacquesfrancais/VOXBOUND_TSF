@@ -104,9 +104,9 @@ try {
             'sud'    => (int)($nodeData['southTarget'] ?? 0),
             'est'    => (int)($nodeData['eastTarget'] ?? 0),
             'ouest'  => (int)($nodeData['westTarget'] ?? 0),
-            'haut'   => (int)($nodeData['upTarget'] ?? 0),
-            'bas'    => (int)($nodeData['downTarget'] ?? 0),
-            'entrer' => (int)($nodeData['inTarget'] ?? 0),
+            'remonter' => (int)($nodeData['upTarget'] ?? 0),
+            'descendre' => (int)($nodeData['downTarget'] ?? 0),
+            'pénétrer' => (int)($nodeData['inTarget'] ?? 0),
             'sortir' => (int)($nodeData['outTarget'] ?? 0)
         ],
         'stats'       => [

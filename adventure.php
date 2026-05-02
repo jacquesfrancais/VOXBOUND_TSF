@@ -59,8 +59,12 @@ $locTitle = $locStmt->fetchColumn() ?: "Unknown Location";
                 Location: <span id="location-id-display"><?= htmlspecialchars($locTitle) ?></span>
                 <button class="btn-outline" onclick="replayRoomDescription()" style="font-size: 0.6rem; margin-left: 10px; padding: 2px 5px; vertical-align: middle;">READ ALOUD</button>
                 <button class="btn-outline" onclick="toggleLanguage()" style="font-size: 0.6rem; margin-left: 5px; padding: 2px 5px; vertical-align: middle;">TRANSLATE</button>
+                <button id="btn-voice-command" class="btn-neon" onclick="startVoiceCommand()" style="font-size: 0.6rem; margin-left: 5px; padding: 2px 5px; vertical-align: middle;">ÉNONCER LES COMMANDES</button>
             </div>
             
+            <!-- PERSISTENT FEEDBACK AREA -->
+            <div id="command-feedback" style="min-height: 25px; font-size: 0.8rem; margin-bottom: 15px; font-family: var(--font-mono); border-bottom: 1px solid #1a1a1a; padding-bottom: 5px;"></div>
+
             <div id="room-description" style="color: var(--accent-gold); line-height: 1.6; margin-bottom: 20px;">
                 &gt; INITIALIZING ENVIRONMENT...<br>
                 The terminal flickers to life. The path winds through the dark woods.
@@ -103,12 +107,12 @@ $locTitle = $locStmt->fetchColumn() ?: "Unknown Location";
                 <!-- UTILITY AXIS: HAUT/BAS & ENTRER/SORTIR -->
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <div style="display:flex; flex-direction:column; gap:5px; border: 1px solid #222; padding: 5px;">
-                        <button id="btn-haut" class="btn-neon" onclick="handleMove('haut')" style="font-size: 0.7rem; padding: 5px;">HAUT</button>
+                        <button id="btn-remonter" class="btn-neon" onclick="handleMove('remonter')" style="font-size: 0.7rem; padding: 5px;">REMONTER</button>
                         <div style="color: var(--accent-gold); font-size: 0.6rem;">↕</div>
-                        <button id="btn-bas" class="btn-neon" onclick="handleMove('bas')" style="font-size: 0.7rem; padding: 5px;">BAS</button>
+                        <button id="btn-descendre" class="btn-neon" onclick="handleMove('descendre')" style="font-size: 0.7rem; padding: 5px;">DESCENDRE</button>
                     </div>
                     <div style="display:flex; flex-direction:column; gap:5px; border: 1px solid #222; padding: 5px;">
-                        <button id="btn-entrer" class="btn-neon" onclick="handleMove('entrer')" style="font-size: 0.7rem; padding: 5px;">ENTRER</button>
+                        <button id="btn-pénétrer" class="btn-neon" onclick="handleMove('pénétrer')" style="font-size: 0.7rem; padding: 5px;">PÉNÉTRER</button>
                         <div style="color: var(--accent-gold); font-size: 0.6rem;">↔</div>
                         <button id="btn-sortir" class="btn-neon" onclick="handleMove('sortir')" style="font-size: 0.7rem; padding: 5px;">SORTIR</button>
                     </div>
@@ -121,12 +125,14 @@ $locTitle = $locStmt->fetchColumn() ?: "Unknown Location";
                     <span style="font-size: 0.6rem; color: #444;">7x7 SENSOR RANGE</span>
                 </div>
                 <div id="mini-map-grid"></div>
+                <div id="z-level-display">Level: 0</div>
             </div>
         </aside>
 
     </main>
 
     <!-- LOAD ENGINE LOGIC -->
+    <script src="speech.js"></script>
     <script src="ui.js"></script>
     <script src="engine.js"></script>
 </body>

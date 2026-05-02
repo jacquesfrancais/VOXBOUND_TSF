@@ -79,7 +79,7 @@ if ($response['reward_granted'] > 0) {
 $cmdLower = mb_strtolower($command);
 
 // Navigation: Nord, Sud, Est, Ouest, Montez, Descendez, Allez...
-if (preg_match('/^(nord|sud|est|ouest|montez|descendez|allez)/', $cmdLower, $matches)) {
+if (preg_match('/^(nord|sud|est|ouest|remonter|descendre|montez|descendez|sortir|pénétrer|entrer|allez)/', $cmdLower, $matches)) {
     $response['category'] = 'navigation';
     $response['action'] = 'move_player.php';
     debug_log("Intent matched: Navigation via keyword '{$matches[1]}'");

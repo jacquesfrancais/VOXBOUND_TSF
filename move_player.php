@@ -37,10 +37,11 @@ $directionMap = [
     'sud'       => 'southTarget',
     'est'       => 'eastTarget',
     'ouest'     => 'westTarget',
-    'haut'      => 'upTarget',
+    'remonter'  => 'upTarget',
     'montez'    => 'upTarget',
-    'bas'       => 'downTarget',
+    'descendre' => 'downTarget',
     'descendez' => 'downTarget',
+    'pénétrer'  => 'inTarget',
     'entrer'    => 'inTarget',
     'sortir'    => 'outTarget'
 ];

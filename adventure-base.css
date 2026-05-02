@@ -118,3 +118,13 @@ body {
   cursor: not-allowed;
   box-shadow: none;
 }
+
+/* Z-LEVEL INDICATOR */
+#z-level-display {
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--accent-gold);
+  margin-top: 5px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
