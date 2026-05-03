@@ -1,0 +1,83 @@
+{
+  "startNode": "greeting",
+  "nodes": {
+    "greeting": {
+      "fr": "La bioluminescence n'est pas seulement pour le spectacle. Suivez la mousse la plus brillante.",
+      "en": "Bioluminescence isn't just for show. Follow the brightest moss.",
+      "options": [
+        { "fr": "Où mène cette mousse ?", "en": "Where does this moss lead?", "next": "explain_moss" },
+        { "fr": "Je cherche autre chose.", "en": "I am looking for something else.", "next": "alt_path" }
+      ]
+    },
+    "explain_moss": {
+      "fr": "Elle mène au cœur de la forêt, là où la magie est encore pure. Vous semblez perdu.",
+      "en": "It leads to the heart of the forest, where magic is still pure. You look lost.",
+      "options": [
+        { "fr": "Je ne suis pas perdu, je l'explore.", "en": "I'm not lost, I'm exploring.", "next": "explorer_respect" },
+        { "fr": "La magie pure ? Dites-m'en plus.", "en": "Pure magic? Tell me more.", "next": "magic_lore" }
+      ]
+    },
+    "alt_path": {
+      "fr": "Si ce n'est pas la lumière que vous cherchez, c'est que vous préférez l'ombre. Prenez garde.",
+      "en": "If it is not the light you seek, then you prefer the shadows. Be careful.",
+      "options": [
+        { "fr": "Je n'ai pas peur de l'ombre.", "en": "I am not afraid of the shadows.", "next": "shadow_warning" },
+        { "fr": "Revenons à la mousse brillante.", "en": "Let's go back to the glowing moss.", "next": "explain_moss" }
+      ]
+    },
+    "explorer_respect": {
+      "fr": "L'arrogance est un poison ici. Mais j'aime votre courage. Voulez-vous un sortilège ?",
+      "en": "Arrogance is a poison here. But I like your courage. Do you want a spell?",
+      "options": [
+        { "fr": "Quel genre de sort ?", "en": "What kind of spell?", "next": "spell_shop" },
+        { "fr": "Non merci, je me débrouille seul.", "en": "No thanks, I can manage alone.", "next": "END" }
+      ]
+    },
+    "magic_lore": {
+      "fr": "Elle respire. Elle palpite sous vos pieds. Si vous la touchez, elle vous transformera.",
+      "en": "It breathes. It pulses beneath your feet. If you touch it, it will change you.",
+      "options": [
+        { "fr": "Je suis prêt pour le changement.", "en": "I am ready for change.", "next": "quest_offer" },
+        { "fr": "Cela semble trop dangereux.", "en": "That sounds too dangerous.", "next": "safety_advice" }
+      ]
+    },
+    "shadow_warning": {
+      "fr": "L'ombre ici ne cache pas seulement les monstres, elle cache les secrets des anciens.",
+      "en": "The shadow here doesn't just hide monsters; it hides the secrets of the ancients.",
+      "options": [
+        { "fr": "C'est ce que je cherche.", "en": "That is what I am looking for.", "next": "quest_offer" },
+        { "fr": "Peut-être que je devrais rester sur le chemin.", "en": "Maybe I should stay on the path.", "next": "greeting" }
+      ]
+    },
+    "spell_shop": {
+      "fr": "J'ai des poudres de vision et des potions de protection. Choisissez vite.",
+      "en": "I have vision powders and protection potions. Choose quickly.",
+      "options": [
+        { "fr": "Je vais prendre la potion.", "en": "I'll take the potion.", "next": "transaction_complete" },
+        { "fr": "Rien ne m'intéresse.", "en": "Nothing interests me.", "next": "END" }
+      ]
+    },
+    "quest_offer": {
+      "fr": "Apportez-moi un échantillon de la racine lumineuse, et je vous apprendrai un secret.",
+      "en": "Bring me a sample of the glowing root, and I will teach you a secret.",
+      "options": [
+        { "fr": "Je reviendrai avec la racine.", "en": "I will return with the root.", "next": "END" },
+        { "fr": "C'est trop loin pour moi.", "en": "It is too far for me.", "next": "END" }
+      ]
+    },
+    "safety_advice": {
+      "fr": "La prudence est une vertu rare chez les voyageurs. Restez près de la mousse.",
+      "en": "Prudence is a rare virtue among travelers. Stay close to the moss.",
+      "options": [
+        { "fr": "Merci du conseil, Bram.", "en": "Thanks for the advice, Bram.", "next": "END" }
+      ]
+    },
+    "transaction_complete": {
+      "fr": "C'est un bon choix. Puisse-t-elle éclairer vos pas les plus sombres.",
+      "en": "It is a good choice. May it light your darkest steps.",
+      "options": [
+        { "fr": "Au revoir, sorcier.", "en": "Goodbye, wizard.", "next": "END" }
+      ]
+    }
+  }
+}

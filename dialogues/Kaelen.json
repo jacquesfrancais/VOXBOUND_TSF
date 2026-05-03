@@ -1,0 +1,20 @@
+{
+  "startNode": "recruitment_pitch",
+  "nodes": {
+    "recruitment_pitch": {
+      "fr": "La montagne n'est pas un endroit pour les solitaires. Mon épée est à vous, si votre cause est juste.",
+      "en": "The mountain is no place for loners. My sword is yours, if your cause is just.",
+      "options": [
+        { "fr": "Nous combattons pour libérer le village.", "en": "We fight to liberate the village.", "next": "ally_join" },
+        { "fr": "Je n'ai pas besoin d'aide pour le moment.", "en": "I don't need help at the moment.", "next": "END" }
+      ]
+    },
+    "ally_join": {
+      "fr": "Une noble cause. Je jure de vous protéger jusqu'à ce que justice soit faite. En route !",
+      "en": "A noble cause. I swear to protect you until justice is served. Let us move!",
+      "options": [
+        { "fr": "Bienvenue dans l'équipe, Kaelen.", "en": "Welcome to the team, Kaelen.", "next": "END" }
+      ]
+    }
+  }
+}
