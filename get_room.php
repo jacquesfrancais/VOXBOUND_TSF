@@ -59,7 +59,7 @@ try {
     // 5. FETCH NPCs IN ROOM
     // Join the state table with the library to get names for the specific character
     $npcStmt = $pdo->prepare("
-        SELECT n.npcId, n.npcNameFrench, n.npcNameEnglish 
+        SELECT n.npcId, n.npcNameFrench, n.npcNameEnglish, n.greetingFrench
         FROM Character_NPC_State s
         JOIN Npcs n ON s.npcId = n.npcId
         WHERE s.characterId = :charId AND s.currentLocationId = :nodeId AND s.isDead = 0

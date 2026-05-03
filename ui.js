@@ -10,26 +10,80 @@ class VoxBoundUI {
     }
 
     /**
-     * Reads French text aloud using the browser's Speech Synthesis API.
-     * Fulfills Bible Section 3: Audio Support.
-     * @param {string} text - The French text to be spoken.
+     * Reads French text with Karaoke-style highlighting.
+     * @param {string} text - The text to speak.
+     * @param {string} elementId - The ID of the HTML element containing the text.
+     * @param {number} rate - The speed of speech (default 0.7 for beginners).
      */
-    speakText(text) {
+    speakText(text, elementId = null, rate = 0.7) {
         if (!this.isSpeechEnabled || !this.synth) return;
 
-        // Strip HTML tags (like <br>) so the voice engine only reads plain text
         const cleanText = text.replace(/<\/?[^>]+(>|$)/g, "");
-
-        // Cancel any ongoing speech to prevent overlapping
         this.synth.cancel();
 
         const utterance = new SpeechSynthesisUtterance(cleanText);
         utterance.lang = 'fr-FR';
-        utterance.rate = 0.85; // Slightly slower for learning clarity
+        utterance.rate = rate; 
         utterance.pitch = 1.0;
 
-        console.log(`[UI DEBUG] Speaking: "${cleanText}"`);
+        if (elementId) {
+            const container = document.getElementById(elementId);
+            const words = cleanText.split(/\s+/);
+            container.innerHTML = words.map((w, i) => `<span id="word-${elementId}-${i}">${w}</span>`).join(' ');
+
+            utterance.onboundary = (event) => {
+                if (event.name === 'word') {
+                    const charIndex = event.charIndex;
+                    let currentPos = 0;
+                    words.forEach((w, i) => {
+                        const span = document.getElementById(`word-${elementId}-${i}`);
+                        if (currentPos <= charIndex && charIndex < currentPos + w.length + 1) {
+                            span.classList.add('word-highlight');
+                        } else {
+                            span.classList.remove('word-highlight');
+                        }
+                        currentPos += w.length + 1;
+                    });
+                }
+            };
+        }
+
         this.synth.speak(utterance);
+    }
+
+    /**
+     * Generates a short synthesized audio effect using Web Audio API.
+     * @param {string} type - The type of sound to play (e.g., 'error').
+     */
+    playEffect(type) {
+        try {
+            const context = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = context.createOscillator();
+            const gain = context.createGain();
+
+            oscillator.connect(gain);
+            gain.connect(context.destination);
+
+            if (type === 'error') {
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(150, context.currentTime); // Low frequency
+                gain.gain.setValueAtTime(0.1, context.currentTime); // Subtle volume
+                gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.2); // Fade out
+                oscillator.start();
+                oscillator.stop(context.currentTime + 0.2);
+            } else if (type === 'success') {
+                oscillator.type = 'sine';
+                // A pleasant rising two-tone chime (C5 to G5)
+                oscillator.frequency.setValueAtTime(523.25, context.currentTime); // C5
+                oscillator.frequency.setValueAtTime(783.99, context.currentTime + 0.1); // G5
+                gain.gain.setValueAtTime(0.1, context.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.4);
+                oscillator.start();
+                oscillator.stop(context.currentTime + 0.4);
+            }
+        } catch (e) {
+            console.warn("[UI] AudioContext failed to initialize:", e);
+        }
     }
 
     /**

@@ -128,3 +128,11 @@ body {
   text-transform: uppercase;
   letter-spacing: 1px;
 }
+
+/* KARAOKE HIGHLIGHTING */
+.word-highlight {
+  color: var(--accent-gold);
+  text-shadow: 0 0 8px var(--accent-gold);
+  font-weight: bold;
+  transition: all 0.1s ease;
+}
