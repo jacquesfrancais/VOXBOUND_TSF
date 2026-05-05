@@ -1,5 +1,9 @@
 <?php
 session_start();
+
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 require_once __DIR__ . '/db_config.php';
 
 // Security Check: Redirect if not authenticated or character not selected
