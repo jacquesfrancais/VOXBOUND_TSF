@@ -79,6 +79,14 @@ try {
             'charId' => $_SESSION['character_id']
         ]);
 
+        // Update the location for all NPCs currently following this character
+        $npcMoveStmt = $pdo->prepare("
+            UPDATE Character_NPC_State 
+            SET currentLocationId = :nextId 
+            WHERE characterId = :charId AND isFollowing = 1 AND isDead = 0
+        ");
+        $npcMoveStmt->execute(['nextId' => $nextNodeId, 'charId' => $_SESSION['character_id']]);
+
         // Mark room as discovered in State table
         $stateStmt = $pdo->prepare("
             INSERT INTO Character_Room_State (characterId, nodeId, isDiscovered)

@@ -13,7 +13,7 @@
       "fr": "Une noble cause. Je jure de vous protéger jusqu'à ce que justice soit faite. En route !",
       "en": "A noble cause. I swear to protect you until justice is served. Let us move!",
       "options": [
-        { "fr": "Bienvenue dans l'équipe, Kaelen.", "en": "Welcome to the team, Kaelen.", "next": "END" }
+        { "fr": "Bienvenue dans l'équipe, Kaelen.", "en": "Welcome to the team, Kaelen.", "next": "END", "trigger": "recruit_npc" }
       ]
     }
   }

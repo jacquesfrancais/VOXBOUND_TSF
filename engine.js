@@ -58,6 +58,24 @@ function updateUI(data) {
         }
     }
 
+    // 3.5 Update Party List
+    const partySection = document.getElementById('party-section');
+    const partyList = document.getElementById('party-list');
+    if (partySection && partyList) {
+        partyList.innerHTML = '';
+        if (data.party && data.party.length > 0) {
+            partySection.style.display = 'block';
+            data.party.forEach(member => {
+                const li = document.createElement('li');
+                const name = (currentLanguage === 'fr') ? member.npcNameFrench : member.npcNameEnglish;
+                li.innerHTML = `▶ <span style="color:var(--primary-cyan)">${name.toUpperCase()}</span>`;
+                partyList.appendChild(li);
+            });
+        } else {
+            partySection.style.display = 'none';
+        }
+    }
+
     // 4. Update Object/Item List
     const objectList = document.getElementById('object-list');
     if (objectList) {

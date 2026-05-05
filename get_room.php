@@ -67,6 +67,16 @@ try {
     $npcStmt->execute(['charId' => $_SESSION['character_id'], 'nodeId' => $nodeId]);
     $npcs = $npcStmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // 5.5 FETCH PARTY (Allies following the player)
+    $partyStmt = $pdo->prepare("
+        SELECT n.npcId, n.npcNameFrench, n.npcNameEnglish
+        FROM Character_NPC_State s
+        JOIN Npcs n ON s.npcId = n.npcId
+        WHERE s.characterId = :charId AND s.isFollowing = 1 AND s.isDead = 0
+    ");
+    $partyStmt->execute(['charId' => $_SESSION['character_id']]);
+    $party = $partyStmt->fetchAll(PDO::FETCH_ASSOC);
+
     // 6. FETCH ITEMS IN ROOM
     // In the new schema, items on the floor have ownerType = 'Room'
     $itemStmt = $pdo->prepare("
@@ -97,6 +107,7 @@ try {
         'descriptionFr' => $descriptionFr,
         'descriptionEn' => $descriptionEn,
         'npcs'        => $npcs,
+        'party'       => $party,
         'items'       => $items,
         'mapNodes'    => $mapNodes,
         'exits'       => [
