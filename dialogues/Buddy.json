@@ -1,0 +1,34 @@
+{
+  "startNode": "greeting",
+  "nodes": {
+    "greeting": {
+      "fr": "Bonjour ! J'aime sourire, le sourire est mon préféré ! Est-ce que tu as du sirop ? J'ai vraiment faim.",
+      "en": "Hello! I love smiling, smiling's my favorite! Do you have any syrup? I'm awfully hungry.",
+      "options": [
+        { "fr": "Désolé, je n'ai pas de sirop.", "en": "Sorry, I don't have any syrup.", "next": "food_groups" },
+        { "fr": "Tu es un elfe très grand...", "en": "You are a very tall elf...", "next": "identity_crisis" }
+      ]
+    },
+    "food_groups": {
+      "fr": "C'est grave ! Nous les elfes, on respecte quatre groupes alimentaires : les bonbons, les cannes à sucre, les cornes de gazelle et le sirop !",
+      "en": "That's terrible! We elves try to stick to the four main food groups: candy, candy canes, candy corns, and syrup!",
+      "options": [
+        { "fr": "Je cherche un allié pour ma quête.", "en": "I am looking for an ally for my quest.", "next": "recruitment_pitch" }
+      ]
+    },
+    "identity_crisis": {
+      "fr": "Je sais ! Je suis un 'humain' mais j'ai grandi au pôle Nord. Je suis un elfe dans mon cœur !",
+      "en": "I know! I'm a 'human' but I grew up at the North Pole. I'm an elf in my heart!",
+      "options": [
+        { "fr": "Viens avec moi, Buddy !", "en": "Come with me, Buddy!", "next": "recruitment_pitch" }
+      ]
+    },
+    "recruitment_pitch": {
+      "fr": "Une quête ?! C'est génial ! On va chanter des chansons ? J'arrive tout de suite !",
+      "en": "A quest?! That's amazing! Are we going to sing songs? I'm coming right now!",
+      "options": [
+        { "fr": "Bienvenue dans l'équipe, Buddy !", "en": "Welcome to the team, Buddy!", "next": "END", "trigger": "recruit_npc" }
+      ]
+    }
+  }
+}

@@ -69,7 +69,7 @@ try {
 
     // 5.5 FETCH PARTY (Allies following the player)
     $partyStmt = $pdo->prepare("
-        SELECT n.npcId, n.npcNameFrench, n.npcNameEnglish
+        SELECT n.npcId, n.npcNameFrench, n.npcNameEnglish, s.currentHitPoints, n.strength, n.agility
         FROM Character_NPC_State s
         JOIN Npcs n ON s.npcId = n.npcId
         WHERE s.characterId = :charId AND s.isFollowing = 1 AND s.isDead = 0

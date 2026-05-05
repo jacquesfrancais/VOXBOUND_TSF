@@ -67,8 +67,10 @@ function updateUI(data) {
             partySection.style.display = 'block';
             data.party.forEach(member => {
                 const li = document.createElement('li');
+                li.style.marginBottom = "5px";
                 const name = (currentLanguage === 'fr') ? member.npcNameFrench : member.npcNameEnglish;
-                li.innerHTML = `▶ <span style="color:var(--primary-cyan)">${name.toUpperCase()}</span>`;
+                // Displaying stats beside the name for a tactical overview
+                li.innerHTML = `▶ <span style="color:var(--primary-cyan)">${name.toUpperCase()}</span> <span style="color:var(--accent-gold); font-size:0.7rem; opacity:0.8;">[HP:${member.currentHitPoints} STR:${member.strength} AGI:${member.agility}]</span>`;
                 partyList.appendChild(li);
             });
         } else {
