@@ -63,12 +63,14 @@ function updateUI(data) {
     const partyList = document.getElementById('party-list');
     if (partySection && partyList) {
         partyList.innerHTML = '';
-        if (data.party && data.party.length > 0) {
+        console.log(`[ENGINE DEBUG] Party members detected: ${data.party ? data.party.length : 0}`);
+
+        if (data.party && Array.isArray(data.party) && data.party.length > 0) {
             partySection.style.display = 'block';
             data.party.forEach(member => {
                 const li = document.createElement('li');
                 li.style.marginBottom = "5px";
-                const name = (currentLanguage === 'fr') ? member.npcNameFrench : member.npcNameEnglish;
+                const name = ((currentLanguage === 'fr') ? member.npcNameFrench : member.npcNameEnglish) || "Unknown Ally";
                 // Displaying stats beside the name for a tactical overview
                 li.innerHTML = `▶ <span style="color:var(--primary-cyan)">${name.toUpperCase()}</span> <span style="color:var(--accent-gold); font-size:0.7rem; opacity:0.8;">[HP:${member.currentHitPoints} STR:${member.strength} AGI:${member.agility}]</span>`;
                 partyList.appendChild(li);
@@ -86,10 +88,36 @@ function updateUI(data) {
             data.items.forEach(item => {
                 const li = document.createElement('li');
                 const name = (currentLanguage === 'fr') ? item.nameFrench : item.nameEnglish;
-                li.textContent = `[ ] ${name}`;
+                li.style.cursor = "pointer";
+                // Visual feedback for weight to help testing
+                const weightInfo = `<span style="color:#444; font-size:0.7rem;"> (${item.weight}kg)</span>`;
+                li.innerHTML = `[ ] <span style="color:var(--accent-gold)">PRENDRE:</span> ${name}${weightInfo}`;
                 objectList.appendChild(li);
             });
         }
+    }
+
+    // 4.5 Update Inventory List & Weight
+    const invList = document.getElementById('inventory-list');
+    const weightDisplay = document.getElementById('total-weight');
+    const maxWeightDisplay = document.getElementById('max-weight');
+    
+    if (invList && weightDisplay) {
+        invList.innerHTML = '';
+        if (data.inventory && data.inventory.length > 0) {
+            data.inventory.forEach(item => {
+                const li = document.createElement('li');
+                const name = (currentLanguage === 'fr') ? item.nameFrench : item.nameEnglish;
+                li.innerHTML = `• ${name} <span style="color:#444; font-size:0.7rem;">(${item.weight}kg)</span>`;
+                invList.appendChild(li);
+            });
+        } else {
+            invList.innerHTML = '<li style="font-style:italic; color:#444;">&gt; Vide...</li>';
+        }
+        
+        const currentW = parseFloat(data.totalWeight || 0);
+        weightDisplay.textContent = currentW.toFixed(2);
+        weightDisplay.style.color = (currentW > parseFloat(maxWeightDisplay.textContent)) ? '#ff5555' : 'var(--accent-gold)';
     }
 
     // 5. Update Sidebar Stats (Character Truth)

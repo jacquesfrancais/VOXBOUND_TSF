@@ -167,6 +167,18 @@ if (
         ");
         $roomStateStmt->execute(['charId' => $newCharId]);
 
+        // INITIALIZE ITEM INSTANCES (The Spawner)
+        // Tag every item in this character's world with their unique characterId
+        $itemSpawnStmt = $pdo->prepare("
+            INSERT INTO ItemInstances (characterId, itemId, ownerType, ownerId)
+            SELECT :charId, itemId, ownerType, COALESCE(ownerId, :charId_alt)
+            FROM WorldTemplates
+        ");
+        $itemSpawnStmt->execute([
+            'charId'     => $newCharId,
+            'charId_alt' => $newCharId
+        ]);
+
         header('Location: voice_calibration.php');
         exit;
     }

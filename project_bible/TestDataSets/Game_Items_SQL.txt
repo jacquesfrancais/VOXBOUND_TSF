@@ -12,17 +12,17 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- 2. POPULATE ITEM LIBRARY (The Master Definitions)
 INSERT INTO ItemLibrary (itemId, nameFrench, nameEnglish, itemType, baseValue, weight, extraData) VALUES
 -- Ally Gear
-(1, 'Épée de Justice', 'Sword of Justice', 'Weapon', 500, 5.00, '{"strBonus": 8, "owner": "Kaelen"}'),
-(2, 'Dagues Jumelles', 'Twin Daggers', 'Weapon', 350, 1.50, '{"agiBonus": 5, "strBonus": 3, "owner": "Lyra"}'),
-(3, 'Bouclier de Rempart', 'Bulwark Shield', 'Armor', 400, 10.00, '{"armorValue": 15, "owner": "Kaelen"}'),
-(4, 'Armure de Cuir Souple', 'Supple Leather Armor', 'Armor', 250, 4.00, '{"armorValue": 5, "agiBonus": 2, "owner": "Lyra"}'),
+(1, 'Épée de Justice', 'Sword of Justice', 'Weapon', 500, 5.00, '{"dice": "2d6", "strBonus": 8}'),
+(2, 'Dagues Jumelles', 'Twin Daggers', 'Weapon', 350, 1.50, '{"dice": "1d8", "agiBonus": 5, "strBonus": 3}'),
+(3, 'Bouclier de Rempart', 'Bulwark Shield', 'Armor', 400, 10.00, '{"armorValue": 15}'),
+(4, 'Armure de Cuir Souple', 'Supple Leather Armor', 'Armor', 250, 4.00, '{"armorValue": 5, "agiBonus": 2}'),
 
 -- Monster Natural Weapons (Non-lootable)
-(5, 'Mandibules Serrées', 'Serrated Mandibles', 'Weapon', 0, 0.00, '{"strBonus": 6, "lootable": false}'),
-(6, 'Serres de Chitine', 'Chitin Talons', 'Weapon', 0, 0.00, '{"agiBonus": 4, "lootable": false}'),
+(5, 'Mandibules Serrées', 'Serrated Mandibles', 'Weapon', 0, 0.00, '{"dice": "1d10", "strBonus": 6, "lootable": false}'),
+(6, 'Serres de Chitine', 'Chitin Talons', 'Weapon', 0, 0.00, '{"dice": "1d8", "agiBonus": 4, "lootable": false}'),
 
 -- Player Starting Gear
-(7, 'Épée Courte Rouillée', 'Rusty Shortsword', 'Weapon', 50, 3.00, '{"strBonus": 3}'),
+(7, 'Épée Courte Rouillée', 'Rusty Shortsword', 'Weapon', 50, 3.00, '{"dice": "1d6", "strBonus": 3}'),
 (8, 'Tunique en Laine', 'Woolen Tunic', 'Armor', 20, 1.00, '{"armorValue": 1}'),
 
 -- Consumables & Quest Items
@@ -31,7 +31,24 @@ INSERT INTO ItemLibrary (itemId, nameFrench, nameEnglish, itemType, baseValue, w
 
 -- Treasure/Loot
 (11, 'Quartz d''Éther', 'Aether-Quartz', 'Treasure', 250, 2.00, '{"glow": true}'),
-(12, 'Fragment de Chitine', 'Chitin Fragment', 'Treasure', 15, 0.20, '{"material": true}');
+(12, 'Fragment de Chitine', 'Chitin Fragment', 'Treasure', 15, 0.20, '{"material": true}'),
+
+-- New Test & Exploration Items
+(13, 'Statuette d''Or Massif', 'Solid Gold Statuette', 'Treasure', 1000, 100.00, '{"description": "Too heavy for most mortals."}'),
+(14, 'Sac de Charbon', 'Bag of Coal', 'Treasure', 5, 20.00, '{"dirty": true}'),
+(15, 'Enclume Rouillée', 'Rusted Anvil', 'Treasure', 50, 35.00, '{"material": "iron"}'),
+(16, 'Vieux Livre', 'Old Book', 'Treasure', 30, 1.00, '{"language": "ancient"}'),
+(17, 'Pomme de Pin', 'Pine Cone', 'Consumable', 1, 0.10, '{"fuel": true}'),
+(18, 'Fiole de Verre', 'Glass Phial', 'Treasure', 10, 0.20, '{"empty": true}'),
+(19, 'Boussole Cassée', 'Broken Compass', 'Treasure', 15, 0.50, '{"broken": true}'),
+(20, 'Clé de Fer', 'Iron Key', 'Quest', 0, 0.30, '{"opens": "Cell Door"}'),
+(21, 'Chiffon Sale', 'Dirty Rag', 'Treasure', 1, 0.10, '{"useless": true}'),
+(22, 'Pierre Luisante', 'Glow-Stone', 'Treasure', 40, 0.80, '{"lightSource": true}'),
+(23, 'Herbe des Montagnes', 'Mountain Herb', 'Consumable', 5, 0.10, '{"healing": 5}'),
+(24, 'Relique de l''Ombre', 'Shadow Relic', 'Treasure', 150, 2.50, '{"ominous": true}'),
+(25, 'Pièce Obscure', 'Dark Coin', 'Treasure', 100, 0.10, '{"currency": "ancient"}'),
+(26, 'Miroir Terni', 'Tarnished Mirror', 'Treasure', 25, 1.20, '{"reflective": false}'),
+(27, 'Os de Dragonnet', 'Dragonling Bone', 'Treasure', 80, 5.00, '{"rare": true}');
 
 -- 3. POPULATE WORLD TEMPLATES (The Initial Spawning Map)
 INSERT INTO WorldTemplates (itemId, ownerType, ownerId) VALUES
@@ -52,6 +69,23 @@ INSERT INTO WorldTemplates (itemId, ownerType, ownerId) VALUES
 -- Place Items in Rooms (Locations)
 (9, 'Room', 102),  -- Salt pouch found in the Tavern
 (11, 'Room', 120), -- Quartz found in the Treasure Vault
+
+-- Location Clusters
+(19, 'Room', 101), -- Broken Compass at the start
+(21, 'Room', 102), -- Dirty Rag also in Tavern
+(25, 'Room', 104), -- Dark Coin in Gambler's Nook
+(15, 'Room', 105), -- Rusted Anvil (Heavy) in the Study
+(16, 'Room', 105), -- Old Book in the Study
+(17, 'Room', 107), -- Pine Cone at Mountain Base
+(23, 'Room', 108), -- Mountain Herb on Shale Path
+(22, 'Room', 110), -- Glow-Stone at Entrance
+(18, 'Room', 111), -- Glass Phial in Foyer
+(14, 'Room', 112), -- Bag of Coal (Heavy) at Junction
+(20, 'Room', 112), -- Iron Key at Junction
+(27, 'Room', 112), -- Dragonling Bone at Junction (3 items here)
+(24, 'Room', 117), -- Relique in Shadow Crevice
+(26, 'Room', 119), -- Mirror in Hidden Grotto
+(13, 'Room', 120), -- Gold Statuette (Limit Test) in the Vault
 
 -- Player Starting Kit (Global Template)
 (7, 'Player', NULL), 

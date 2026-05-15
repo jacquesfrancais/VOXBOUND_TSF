@@ -96,8 +96,17 @@ $locTitle = $locStmt->fetchColumn() ?: "Unknown Location";
                 </div>
             </div>
 
+            <!-- INVENTORY SECTION -->
+            <div class="console-box">
+                <div class="title-label">Inventory</div>
+                <ul id="inventory-list" style="list-style: none; padding: 0; margin: 0; font-size: 0.85rem; color: #888;"></ul>
+                <div style="border-top: 1px solid #222; margin-top: 10px; padding-top: 5px; font-size: 0.75rem; color: var(--accent-gold);">
+                    WEIGHT: <span id="total-weight">0.00</span> / <span id="max-weight"><?= (int)$character['strength'] * 5 ?></span> kg
+                </div>
+            </div>
+
             <!-- PARTY SECTION -->
-            <div id="party-section" class="console-box" style="background: rgba(0, 242, 255, 0.1); display: none;">
+            <div id="party-section" class="console-box" style="background: rgba(0, 242, 255, 0.1);">
                 <div class="title-label">Active Party</div>
                 <ul id="party-list" style="list-style: none; padding: 0; margin: 0; font-size: 0.85rem;"></ul>
             </div>
