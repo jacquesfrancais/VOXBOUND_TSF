@@ -161,6 +161,7 @@ $locTitle = $locStmt->fetchColumn() ?: "Unknown Location";
     <script src="navigation.js"></script>
     <script src="map.js"></script>
     <script src="inventory.js"></script>
+    <script src="dialogue.js"></script>
     <script src="ui.js"></script>
     <script src="engine.js"></script>
 </body>
