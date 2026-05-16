@@ -147,64 +147,6 @@ function updateUI(data) {
 }
 
 /**
- * ITEM SYSTEM: Sends a request to take an item from the room.
- * @param {number} instanceId 
- */
-function takeItem(instanceId) {
-    console.log(`[ENGINE] Attempting to take item instance: ${instanceId}`);
-
-    fetch('process_item.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'take', instanceId: instanceId })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.debug) console.table(data.debug);
-        
-        if (data.success) {
-            // Refresh the entire state to update Room Entities and Inventory sidebar
-            initializeGame();
-        } else {
-            // Use the persistent feedback area for item errors
-            const feedbackArea = document.getElementById('command-feedback');
-            if (feedbackArea) feedbackArea.innerHTML = `<span style="color:#ff5555;">&gt; ${data.error}</span>`;
-            if (window.VoxUI) window.VoxUI.playEffect('error');
-        }
-    })
-    .catch(err => console.error("[ENGINE] Item interaction communication error:", err));
-}
-
-/**
- * Communicates with the Move Judge to update the character's position.
- * @param {string} direction - The direction to move (nord, sud, etc.)
- */
-function handleMove(direction) {
-    console.log(`[ENGINE DEBUG] Dispatching move request: ${direction}`);
-
-    fetch('move_player.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ direction: direction })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            console.log(`[ENGINE DEBUG] Move successful: ${data.message}`);
-            if (data.debug) console.table(data.debug);
-            // Refresh the environmental Truth after movement
-            initializeGame();
-        } else {
-            // Visual feedback for blocked paths
-            console.warn(`[ENGINE DEBUG] Move blocked: ${data.error}`);
-            if (data.debug) console.table(data.debug);
-            alert(data.error); 
-        }
-    })
-    .catch(err => console.error("[ENGINE DEBUG] Movement communication error:", err));
-}
-
-/**
  * Bootstraps the game state by fetching the current room data from the Judge.
  */
 function initializeGame() {
@@ -458,56 +400,6 @@ function startVoiceCommand() {
         })
         .catch(err => console.error("[ENGINE] Command processing error:", err));
     });
-}
-
-/**
- * Renders a relative 7x7 grid centered on the player's map coordinates.
- */
-function updateMiniMap(data) {
-    const grid = document.getElementById('mini-map-grid');
-    if (!grid || !data.mapNodes) return;
-
-    grid.replaceChildren(); // Faster and cleaner than innerHTML = ''
-    console.log(`[ENGINE DEBUG] Rendering map for Node ${data.nodeId}. Discovered nodes: ${data.mapNodes.length}`);
-    
-    // Find current node coords
-    // Default to (0,0,0) if the current room isn't found or mapped yet
-    const current = (data.mapNodes || []).find(n => n.nodeId == data.nodeId);
-    if (!current) console.warn(`[ENGINE DEBUG] Current Node ${data.nodeId} NOT found in discovered mapNodes.`);
-    
-    // Use Number() to ensure we are doing math, not string concatenation
-    const centerX = current ? Number(current.mapX) : 0;
-    const centerY = current ? Number(current.mapY) : 0;
-    const centerZ = current ? Number(current.mapZ) : 0;
-    const range = 3; // Render a 7x7 grid centered on player
-
-    // Update Z-Level Display
-    const zDisplay = document.getElementById('z-level-display');
-    if (zDisplay) {
-        zDisplay.textContent = `Level: ${centerZ}`;
-    }
-
-    console.log(`[ENGINE DEBUG] Map Center: (${centerX}, ${centerY}, ${centerZ})`);
-
-    // Filter discovered nodes to only those on the same vertical level
-    const levelNodes = (data.mapNodes || []).filter(n => Number(n.mapZ) === centerZ);
-
-    for (let y = centerY - range; y <= centerY + range; y++) {
-        for (let x = centerX - range; x <= centerX + range; x++) {
-            const cell = document.createElement('div');
-            cell.className = 'map-cell';
-            
-            const node = levelNodes.find(n => Number(n.mapX) === x && Number(n.mapY) === y);
-            if (node) {
-                cell.classList.add('active');
-                cell.setAttribute('data-title', node.title || 'Unknown');
-                if (node.nodeId == data.nodeId) {
-                    cell.classList.add('current');
-                }
-            }
-            grid.appendChild(cell);
-        }
-    }
 }
 
 /**
