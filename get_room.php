@@ -6,10 +6,6 @@
  */
 
 session_start();
-
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 require_once __DIR__ . '/db_config.php';
 
 header('Content-Type: application/json');
@@ -63,7 +59,7 @@ try {
     // 5. FETCH NPCs IN ROOM
     // Join the state table with the library to get names for the specific character
     $npcStmt = $pdo->prepare("
-        SELECT n.npcId, n.npcNameFrench, n.npcNameEnglish, n.greetingFrench
+        SELECT n.npcId, n.npcNameFrench, n.npcNameEnglish 
         FROM Character_NPC_State s
         JOIN Npcs n ON s.npcId = n.npcId
         WHERE s.characterId = :charId AND s.currentLocationId = :nodeId AND s.isDead = 0
@@ -80,17 +76,36 @@ try {
     ");
     $partyStmt->execute(['charId' => $_SESSION['character_id']]);
     $party = $partyStmt->fetchAll(PDO::FETCH_ASSOC);
+    debug_log("Party count for character {$_SESSION['character_id']}: " . count($party));
 
     // 6. FETCH ITEMS IN ROOM
     // In the new schema, items on the floor have ownerType = 'Room'
     $itemStmt = $pdo->prepare("
-        SELECT l.nameFrench, l.nameEnglish
+        SELECT i.instanceId, l.nameFrench, l.nameEnglish, l.weight, l.extraData
         FROM ItemInstances i
         JOIN ItemLibrary l ON i.itemId = l.itemId
-        WHERE i.ownerType = 'Room' AND i.ownerId = :nodeId
+        WHERE i.characterId = :charId AND i.ownerType = 'Room' AND i.ownerId = :nodeId
     ");
-    $itemStmt->execute(['nodeId' => $nodeId]);
+    $itemStmt->execute(['charId' => $_SESSION['character_id'], 'nodeId' => $nodeId]);
     $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // 6.2 FETCH PLAYER INVENTORY
+    $invStmt = $pdo->prepare("
+        SELECT i.instanceId, l.nameFrench, l.nameEnglish, l.weight
+        FROM ItemInstances i
+        JOIN ItemLibrary l ON i.itemId = l.itemId
+        WHERE i.characterId = :charId AND i.ownerType = 'Player' AND i.ownerId = :ownerId
+    ");
+    $invStmt->execute([
+        'charId'  => $_SESSION['character_id'],
+        'ownerId' => $_SESSION['character_id']
+    ]);
+    $inventory = $invStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $totalWeight = 0;
+    foreach ($inventory as $invItem) {
+        $totalWeight += $invItem['weight'];
+    }
 
     // 6.5 FETCH DISCOVERED NODES FOR MINI-MAP
     $mapStmt = $pdo->prepare("
@@ -113,6 +128,8 @@ try {
         'npcs'        => $npcs,
         'party'       => $party,
         'items'       => $items,
+        'inventory'   => $inventory,
+        'totalWeight' => $totalWeight,
         'mapNodes'    => $mapNodes,
         'exits'       => [
             'nord'   => (int)($nodeData['northTarget'] ?? 0),

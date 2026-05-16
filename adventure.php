@@ -87,6 +87,12 @@ $locTitle = $locStmt->fetchColumn() ?: "Unknown Location";
 
         <!-- RIGHT: STATS & CONTROLS -->
         <aside style="display:flex; flex-direction:column; gap:20px;">
+            <!-- COMMAND MANUAL (The Cheat Sheet) -->
+            <div class="console-box" id="command-manual-section" style="border-color: var(--accent-gold); background: rgba(249, 249, 51, 0.05);">
+                <div class="title-label" style="font-size: 0.7rem;">Protocol: Vocal Commands</div>
+                <ul id="command-manual-list" style="list-style: none; padding: 0; margin: 0; font-size: 0.8rem; line-height: 1.4; color: var(--accent-gold);"></ul>
+            </div>
+
             <div class="console-box" style="background: var(--primary-cyan); color: black;">
                 <strong id="char-name" style="text-transform: uppercase;"><?= htmlspecialchars($character['characterName']) ?></strong>
                 <div style="font-size: 0.85rem; margin-top: 5px;">
@@ -96,8 +102,17 @@ $locTitle = $locStmt->fetchColumn() ?: "Unknown Location";
                 </div>
             </div>
 
+            <!-- INVENTORY SECTION -->
+            <div class="console-box">
+                <div class="title-label">Inventory</div>
+                <ul id="inventory-list" style="list-style: none; padding: 0; margin: 0; font-size: 0.85rem; color: #888;"></ul>
+                <div style="border-top: 1px solid #222; margin-top: 10px; padding-top: 5px; font-size: 0.75rem; color: var(--accent-gold);">
+                    WEIGHT: <span id="total-weight">0.00</span> / <span id="max-weight"><?= (int)$character['strength'] * 5 ?></span> kg
+                </div>
+            </div>
+
             <!-- PARTY SECTION -->
-            <div id="party-section" class="console-box" style="background: rgba(0, 242, 255, 0.1); display: none;">
+            <div id="party-section" class="console-box" style="background: rgba(0, 242, 255, 0.1);">
                 <div class="title-label">Active Party</div>
                 <ul id="party-list" style="list-style: none; padding: 0; margin: 0; font-size: 0.85rem;"></ul>
             </div>

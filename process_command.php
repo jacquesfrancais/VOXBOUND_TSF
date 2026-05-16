@@ -85,13 +85,13 @@ if (preg_match('/^(nord|sud|est|ouest|remonter|descendre|montez|descendez|sortir
     debug_log("Intent matched: Navigation via keyword '{$matches[1]}'");
 }
 // Observation: Regardez, Examinez, Cherchez, Inventaire
-elseif (preg_match('/^(regardez|examinez|cherchez|inventaire)/', $cmdLower, $matches)) {
+elseif (preg_match('/^(regarder|regardez|examiner|examinez|chercher|cherchez|inventaire)/', $cmdLower, $matches)) {
     $response['category'] = 'observation';
     $response['action'] = ($cmdLower === 'inventaire') ? 'get_inventory.php' : 'get_room.php';
     debug_log("Intent matched: Observation via keyword '{$matches[1]}'");
 }
 // Interaction: Prenez, Posez, Utilisez, Ouvrez
-elseif (preg_match('/^(prenez|posez|utilisez|ouvrez)/', $cmdLower, $matches)) {
+elseif (preg_match('/^(prendre|prenez|poser|posez|utiliser|utilisez|ouvrir|ouvrez)/', $cmdLower, $matches)) {
     $response['category'] = 'interaction';
     $response['action'] = 'process_item.php';
     debug_log("Intent matched: Interaction via keyword '{$matches[1]}'");
