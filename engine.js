@@ -21,9 +21,10 @@ function updateUI(data) {
     if (!data) return;
     lastRoomData = data;
 
-    if (isDialogueActive) return; // Prevent world updates from breaking dialogue view
-
     console.log("[ENGINE DEBUG] Updating UI with incoming data packet.");
+    refreshCommandManual();
+
+    if (isDialogueActive) return; // Prevent world updates from breaking dialogue view
 
     // 1. Update Identity & Location
     const locationDisplay = document.getElementById('location-id-display');
@@ -146,6 +147,35 @@ function updateUI(data) {
 }
 
 /**
+ * ITEM SYSTEM: Sends a request to take an item from the room.
+ * @param {number} instanceId 
+ */
+function takeItem(instanceId) {
+    console.log(`[ENGINE] Attempting to take item instance: ${instanceId}`);
+
+    fetch('process_item.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'take', instanceId: instanceId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.debug) console.table(data.debug);
+        
+        if (data.success) {
+            // Refresh the entire state to update Room Entities and Inventory sidebar
+            initializeGame();
+        } else {
+            // Use the persistent feedback area for item errors
+            const feedbackArea = document.getElementById('command-feedback');
+            if (feedbackArea) feedbackArea.innerHTML = `<span style="color:#ff5555;">&gt; ${data.error}</span>`;
+            if (window.VoxUI) window.VoxUI.playEffect('error');
+        }
+    })
+    .catch(err => console.error("[ENGINE] Item interaction communication error:", err));
+}
+
+/**
  * Communicates with the Move Judge to update the character's position.
  * @param {string} direction - The direction to move (nord, sud, etc.)
  */
@@ -251,6 +281,7 @@ function startDialogue(npcId, npcName) {
 
 function renderDialogueNode(data, npcId, npcName) {
     lastDialogueData = data;
+    refreshCommandManual();
     
     const roomDesc = document.getElementById('room-description');
     const objectList = document.getElementById('object-list');
@@ -400,6 +431,23 @@ function startVoiceCommand() {
             if (data.success && data.category === 'navigation') {
                 // Execute the movement identified by the Judge
                 handleMove(data.command);
+            } else if (data.success && data.category === 'interaction') {
+                // STT Parsing for Item Interaction (Prenez/Take)
+                // Normalize spoken text by removing trailing punctuation
+                const spoken = result.spoken.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
+                const roomItems = (lastRoomData && lastRoomData.items) ? lastRoomData.items : [];
+                
+                // Find an item in the room whose name is contained within the spoken command
+                const itemToTake = roomItems.find(item => 
+                    spoken.includes(item.nameFrench.toLowerCase())
+                );
+
+                if (itemToTake) {
+                    takeItem(itemToTake.instanceId);
+                } else {
+                    feedbackArea.innerHTML += ` <span style="color:#ff5555; font-size:0.7rem;">[OBJET NON TROUVÉ]</span>`;
+                    if (window.VoxUI) window.VoxUI.playEffect('error');
+                }
             } else if (!data.success) {
                 feedbackArea.innerHTML += ` <span style="color:#ff5555; font-size:0.7rem;">[REJETÉ]</span>`;
                 if (window.VoxUI) window.VoxUI.playEffect('error');
@@ -458,6 +506,63 @@ function updateMiniMap(data) {
                 }
             }
             grid.appendChild(cell);
+        }
+    }
+}
+
+/**
+ * Updates the "Command Manual" sidebar with context-appropriate French phrases.
+ */
+function refreshCommandManual() {
+    const list = document.getElementById('command-manual-list');
+    if (!list) return;
+    
+    list.innerHTML = '';
+    console.log(`[ENGINE DEBUG] Refreshing Command Manual. Mode: ${isDialogueActive ? 'Dialogue' : 'Exploration'}`);
+
+    const addHint = (text) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span style="opacity:0.5;">&gt;</span> <span style="cursor:pointer;" onclick="window.VoxUI.speakText('${text.replace(/'/g, "\\'")}')">"${text}"</span>`;
+        li.style.marginBottom = "4px";
+        list.appendChild(li);
+    };
+
+    if (isDialogueActive) {
+        // Maintain system commands even during dialogue
+        addHint("Quitter la conversation");
+    } 
+
+    // All other STT commands (Exploration) go here
+    if (lastRoomData) {
+        addHint("Regardez");
+        addHint("Inventaire");
+        
+        if (lastRoomData.npcs && lastRoomData.npcs.length > 0) {
+            lastRoomData.npcs.forEach(npc => addHint(`Parlez à ${npc.npcNameFrench}`));
+        }
+
+        if (lastRoomData.items && lastRoomData.items.length > 0) {
+            lastRoomData.items.forEach(item => addHint(`Prenez ${item.nameFrench}`));
+        }
+
+        if (lastRoomData.exits) {
+            const directions = ['nord', 'sud', 'est', 'ouest', 'remonter', 'descendre', 'pénétrer', 'sortir'];
+            
+            // Mapping for consistent Imperative display in the manual
+            const navLabels = {
+                'nord': 'Nord',
+                'sud': 'Sud',
+                'est': 'Est',
+                'ouest': 'Ouest',
+                'remonter': 'Remontez',
+                'descendre': 'Descendez',
+                'pénétrer': 'Pénétrez',
+                'sortir': 'Sortez'
+            };
+
+            directions.forEach(dir => {
+                if (lastRoomData.exits[dir] > 0) addHint(navLabels[dir] || dir);
+            });
         }
     }
 }
