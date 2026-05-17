@@ -249,16 +249,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </head>
 <body>
 
-    <!-- TOP NAVIGATION BAR -->
-    <nav style="display:flex; justify-content: space-between; padding: 20px 40px; background: #161b22; border-bottom: 1px solid #333;">
-        <div style="color: var(--primary-cyan); font-weight: bold; letter-spacing: 1px;">VOXBOUND: CONTENT EDITOR</div>
-        <div style="display:flex; gap: 30px;">
-            <a href="index.php" style="color:var(--primary-cyan); text-decoration:none;">HOME</a>
-            <a href="adventure.php" style="color:white; text-decoration:none;">ADVENTURE</a>
-            <a href="admin.php" style="color:white; text-decoration:none;">ADMIN</a>
-            <a href="editor.php" style="color:white; text-decoration:none;">EDITOR</a>
-        </div>
-    </nav>
+    <?php include __DIR__ . '/partials/navbar.php'; ?>
 
     <div class="admin-view-wrapper">
         
