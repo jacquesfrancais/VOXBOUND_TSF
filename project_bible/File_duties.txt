@@ -84,6 +84,9 @@ init.php
 voice_calibration.php
 (Onboarding Manager): Provides a safe practice environment for players to test microphone setup and pronunciation without game consequences.
 
+spawner_worker.php
+(The World Birth Judge): Handles the complex logic of copying static library blueprints (NPCs, Items, Rooms) into a character's unique state tables during creation.
+
 auto_mapper.php
 (Administrative Utility): Crawls world nodes to automatically calculate and store 3D coordinates (X, Y, Z) for the mini-map.
 

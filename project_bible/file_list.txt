@@ -25,6 +25,7 @@ handle_victory.php
 mark_dead.php
 flee.php
 db_config.php
+spawner_worker.php
 editor.php
 navbar.php
 process_combat.php

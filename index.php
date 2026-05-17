@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/db_config.php';
+require_once __DIR__ . '/spawner_worker.php';
 
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
@@ -148,36 +149,8 @@ if (
         $newCharId = $pdo->lastInsertId();
         $_SESSION['character_id'] = $newCharId;
 
-        // Debugging for NPC Spawner
-        error_log("[INDEX DEBUG] Attempting to spawn NPCs for new character ID: $newCharId");
-
-        // INITIALIZE NPC STATE (The Spawner)
-        // This copies the library defaults into the character's specific world instance
-        $spawnStmt = $pdo->prepare("
-            INSERT INTO Character_NPC_State (characterId, npcId, currentLocationId, currentHitPoints)
-            SELECT :charId, npcId, homeNodeId, maxHitPoints FROM Npcs
-        ");
-        $spawnStmt->execute(['charId' => $newCharId]);
-        error_log("[INDEX DEBUG] Spawned " . $spawnStmt->rowCount() . " NPCs into Character_NPC_State.");
-
-        // Initialize Room State for starting location
-        $roomStateStmt = $pdo->prepare("
-            INSERT INTO Character_Room_State (characterId, nodeId, isDiscovered)
-            VALUES (:charId, 101, 1)
-        ");
-        $roomStateStmt->execute(['charId' => $newCharId]);
-
-        // INITIALIZE ITEM INSTANCES (The Spawner)
-        // Tag every item in this character's world with their unique characterId
-        $itemSpawnStmt = $pdo->prepare("
-            INSERT INTO ItemInstances (characterId, itemId, ownerType, ownerId)
-            SELECT :charId, itemId, ownerType, COALESCE(ownerId, :charId_alt)
-            FROM WorldTemplates
-        ");
-        $itemSpawnStmt->execute([
-            'charId'     => $newCharId,
-            'charId_alt' => $newCharId
-        ]);
+        // Execute Modular Spawner Logic
+        spawnInitialWorldState($pdo, $newCharId);
 
         header('Location: voice_calibration.php');
         exit;
