@@ -83,10 +83,9 @@ function updateUI(data) {
             data.items.forEach(item => {
                 const li = document.createElement('li');
                 const name = (currentLanguage === 'fr') ? item.nameFrench : item.nameEnglish;
-                li.style.cursor = "pointer";
                 // Visual feedback for weight to help testing
                 const weightInfo = `<span style="color:#444; font-size:0.7rem;"> (${item.weight}kg)</span>`;
-                li.innerHTML = `[ ] <span style="color:var(--accent-gold)">PRENDRE:</span> ${name}${weightInfo}`;
+                li.innerHTML = `<span style="cursor:pointer;" onclick="takeItem(${item.instanceId})">[<span style="color:var(--accent-gold)">PRENDRE</span>]</span> ${name}${weightInfo}`;
                 objectList.appendChild(li);
             });
         }
