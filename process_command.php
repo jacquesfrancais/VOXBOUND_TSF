@@ -78,38 +78,31 @@ if ($response['reward_granted'] > 0) {
 // 4. CATEGORY ANALYSIS (The Judge identifies the intent)
 $cmdLower = mb_strtolower($command);
 
-// Navigation: Nord, Sud, Est, Ouest, Montez, Descendez, Allez...
-if (preg_match('/^(nord|sud|est|ouest|remonter|descendre|montez|descendez|sortir|pénétrer|entrer|allez)/', $cmdLower, $matches)) {
-    $response['category'] = 'navigation';
-    $response['action'] = 'move_player.php';
-    debug_log("Intent matched: Navigation via keyword '{$matches[1]}'");
+/**
+ * COMMAND REGISTRY
+ * Defines the relationship between linguistic patterns and system intents.
+ */
+$commandRegistry = [
+    'navigation'  => ['pattern' => '/^(nord|sud|est|ouest|remonter|descendre|montez|descendez|sortir|pénétrer|entrer|allez)/', 'action' => 'move_player.php'],
+    'observation' => ['pattern' => '/^(regarder|regardez|examiner|examinez|chercher|cherchez|inventaire)/', 'action' => ($cmdLower === 'inventaire') ? 'get_inventory.php' : 'get_room.php'],
+    'interaction' => ['pattern' => '/^(prendre|prenez|poser|posez|utiliser|utilisez|ouvrir|ouvrez)/', 'action' => 'process_item.php'],
+    'social'      => ['pattern' => '/^(parlez|demandez|saluez)/', 'action' => 'trigger_dialogue_ui'],
+    'combat'      => ['pattern' => '/^(attaquez|fuyez|défendez|lancez)/', 'action' => 'process_combat.php']
+];
+
+$matched = false;
+foreach ($commandRegistry as $category => $rules) {
+    if (preg_match($rules['pattern'], $cmdLower, $matches)) {
+        $response['category'] = $category;
+        $response['action']   = $rules['action'];
+        debug_log("Intent matched: " . ucfirst($category) . " via keyword '{$matches[1]}'");
+        $matched = true;
+        break;
+    }
 }
-// Observation: Regardez, Examinez, Cherchez, Inventaire
-elseif (preg_match('/^(regarder|regardez|examiner|examinez|chercher|cherchez|inventaire)/', $cmdLower, $matches)) {
-    $response['category'] = 'observation';
-    $response['action'] = ($cmdLower === 'inventaire') ? 'get_inventory.php' : 'get_room.php';
-    debug_log("Intent matched: Observation via keyword '{$matches[1]}'");
-}
-// Interaction: Prenez, Posez, Utilisez, Ouvrez
-elseif (preg_match('/^(prendre|prenez|poser|posez|utiliser|utilisez|ouvrir|ouvrez)/', $cmdLower, $matches)) {
-    $response['category'] = 'interaction';
-    $response['action'] = 'process_item.php';
-    debug_log("Intent matched: Interaction via keyword '{$matches[1]}'");
-}
-// Social: Parlez, Demandez, Saluez
-elseif (preg_match('/^(parlez|demandez|saluez)/', $cmdLower, $matches)) {
-    $response['category'] = 'social';
-    $response['action'] = 'trigger_dialogue_ui'; 
-    debug_log("Intent matched: Social via keyword '{$matches[1]}'");
-}
-// Combat: Attaquez, Fuyez, Défendez, Lancez
-elseif (preg_match('/^(attaquez|fuyez|défendez|lancez)/', $cmdLower, $matches)) {
-    $response['category'] = 'combat';
-    $response['action'] = 'process_combat.php';
-    debug_log("Intent matched: Combat via keyword '{$matches[1]}'");
-}
-else {
-    debug_log("Unknown command pattern.");
+
+if (!$matched) {
+    debug_log("Unknown command pattern: '$cmdLower'");
     $response['success'] = false;
 }
 
