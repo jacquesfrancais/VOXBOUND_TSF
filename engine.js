@@ -103,7 +103,8 @@ function updateUI(data) {
             data.inventory.forEach(item => {
                 const li = document.createElement('li');
                 const name = (currentLanguage === 'fr') ? item.nameFrench : item.nameEnglish;
-                li.innerHTML = `• ${name} <span style="color:#444; font-size:0.7rem;">(${item.weight}kg)</span>`;
+                li.innerHTML = `• ${name} <span style="color:#444; font-size:0.7rem;">(${item.weight}kg)</span> 
+                                <button class="btn-outline" onclick="dropItem(${item.instanceId})" style="font-size:0.6rem; padding:1px 4px; margin-left:5px; border-color:#888; color:#888;">POSER</button>`;
                 invList.appendChild(li);
             });
         } else {
@@ -248,18 +249,30 @@ function startVoiceCommand() {
                 // Execute the movement identified by the Judge
                 handleMove(data.command);
             } else if (data.success && data.category === 'interaction') {
-                // STT Parsing for Item Interaction (Prenez/Take)
+                // STT Parsing for Item Interaction (Prenez/Take or Posez/Drop)
                 // Normalize spoken text by removing trailing punctuation
                 const spoken = result.spoken.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
-                const roomItems = (lastRoomData && lastRoomData.items) ? lastRoomData.items : [];
                 
-                // Find an item in the room whose name is contained within the spoken command
-                const itemToTake = roomItems.find(item => 
-                    spoken.includes(item.nameFrench.toLowerCase())
-                );
-
-                if (itemToTake) {
-                    takeItem(itemToTake.instanceId);
+                if (spoken.includes("prenez") || spoken.includes("prendre")) {
+                    const roomItems = (lastRoomData && lastRoomData.items) ? lastRoomData.items : [];
+                    const itemToTake = roomItems.find(item => spoken.includes(item.nameFrench.toLowerCase()));
+                    
+                    if (itemToTake) {
+                        takeItem(itemToTake.instanceId);
+                    } else {
+                        feedbackArea.innerHTML += ` <span style="color:#ff5555; font-size:0.7rem;">[OBJET NON TROUVÉ]</span>`;
+                        if (window.VoxUI) window.VoxUI.playEffect('error');
+                    }
+                } else if (spoken.includes("posez") || spoken.includes("poser")) {
+                    const playerInv = (lastRoomData && lastRoomData.inventory) ? lastRoomData.inventory : [];
+                    const itemToDrop = playerInv.find(item => spoken.includes(item.nameFrench.toLowerCase()));
+                    
+                    if (itemToDrop) {
+                        dropItem(itemToDrop.instanceId);
+                    } else {
+                        feedbackArea.innerHTML += ` <span style="color:#ff5555; font-size:0.7rem;">[NON DANS L'INVENTAIRE]</span>`;
+                        if (window.VoxUI) window.VoxUI.playEffect('error');
+                    }
                 } else {
                     feedbackArea.innerHTML += ` <span style="color:#ff5555; font-size:0.7rem;">[OBJET NON TROUVÉ]</span>`;
                     if (window.VoxUI) window.VoxUI.playEffect('error');
@@ -309,6 +322,11 @@ function refreshCommandManual() {
 
         if (lastRoomData.items && lastRoomData.items.length > 0) {
             lastRoomData.items.forEach(item => addHint(`Prenez ${item.nameFrench}`));
+        }
+
+        // Show drop hints if holding items
+        if (lastRoomData.inventory && lastRoomData.inventory.length > 0) {
+            lastRoomData.inventory.forEach(item => addHint(`Posez ${item.nameFrench}`));
         }
 
         if (lastRoomData.exits) {

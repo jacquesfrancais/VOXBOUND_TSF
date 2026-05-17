@@ -89,6 +89,37 @@ $charStmt->execute(['id' => $charId]);
             'message' => "Vous avez pris : " . $item['nameFrench'],
             'debug' => $debug_logs
         ]);
+    } elseif ($action === 'drop') {
+        // 3. FETCH ITEM TRUTH (Ensure the player actually has it)
+        $itemStmt = $pdo->prepare("
+            SELECT i.instanceId, l.nameFrench 
+            FROM ItemInstances i 
+            JOIN ItemLibrary l ON i.itemId = l.itemId 
+            WHERE i.instanceId = :instId AND i.characterId = :charId AND i.ownerType = 'Player'
+        ");
+        $itemStmt->execute(['instId' => $instanceId, 'charId' => $charId]);
+        $item = $itemStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$item) {
+            throw new Exception("Vous n'avez pas cet objet dans votre inventaire.");
+        }
+
+        // 4. EXECUTE THE TRANSFER (Move instance to the current Room)
+        $updateStmt = $pdo->prepare("
+            UPDATE ItemInstances 
+            SET ownerType = 'Room', ownerId = :locId 
+            WHERE instanceId = :instId
+        ");
+        $updateStmt->execute([
+            'locId' => $character['currentLocationID'], 
+            'instId' => $instanceId
+        ]);
+
+        echo json_encode([
+            'success' => true,
+            'message' => "Vous avez posé : " . $item['nameFrench'],
+            'debug' => $debug_logs
+        ]);
     }
 
 } catch (Exception $e) {
