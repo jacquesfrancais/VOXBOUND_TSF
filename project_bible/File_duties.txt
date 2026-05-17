@@ -101,6 +101,9 @@ voxbound_fr_db_schema_v2-1.sql
 (The Truth Blueprint): The definitive SQL structure defining users, characters, world state, and the static game library.
 
 <WEBSITE>
+partials/ (UI Partials)
+Sub-modules for adventure.php that isolate specific interface components (Console, Stats, Inventory, etc.) to improve maintainability and enable UI re-skinning.
+
 admin-base.css
 (Design Tokens): Styles specific to the administrative dashboard, prioritizing data visibility and system clarity.
 

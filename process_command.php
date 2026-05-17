@@ -76,7 +76,7 @@ if ($response['reward_granted'] > 0) {
 }
 
 // 4. CATEGORY ANALYSIS (The Judge identifies the intent)
-$cmdLower = mb_strtolower($command);
+$cmdLower = preg_replace('/[[:punct:]]/', '', mb_strtolower($command));
 
 /**
  * COMMAND REGISTRY

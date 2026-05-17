@@ -39,6 +39,14 @@ voxbound_fr_db_schema_v2-1.sql
 <WEBSITE>
 admin-base.css
 admin.php
+partials/navbar.php
+partials/ui_console.php
+partials/ui_command_manual.php
+partials/ui_stats.php
+partials/ui_inventory.php
+partials/ui_party.php
+partials/ui_movement.php
+partials/ui_map.php
 adventure-base.css
 adventure.php
 index.php
