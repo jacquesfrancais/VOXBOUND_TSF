@@ -18,7 +18,10 @@ function updateUI(data) {
     console.log("[ENGINE DEBUG] Updating UI with incoming data packet.");
     refreshCommandManual();
 
-    if (isDialogueActive) return; // Prevent world updates from breaking dialogue view
+    // GUARD: Do not overwrite the console if a Dialogue or Combat result is active
+    if (isDialogueActive || (typeof isCombatActive !== 'undefined' && isCombatActive)) {
+        return;
+    }
 
     // 1. Update Identity & Location
     const locationDisplay = document.getElementById('location-id-display');
@@ -247,6 +250,18 @@ function startVoiceCommand() {
             if (data.success && data.category === 'navigation') {
                 // Execute the movement identified by the Judge
                 handleMove(data.command);
+            } else if (data.success && data.category === 'combat') {
+                // Combat Target Detection
+                const spoken = result.spoken.toLowerCase();
+                const roomNpcs = (lastRoomData && lastRoomData.npcs) ? lastRoomData.npcs : [];
+                const target = roomNpcs.find(npc => spoken.includes(npc.npcNameFrench.toLowerCase()));
+
+                if (target) {
+                    if (typeof startCombatTurn === 'function') startCombatTurn(result.spoken, result.tier, target.npcId);
+                } else {
+                    feedbackArea.innerHTML += ` <span style="color:#ff5555; font-size:0.7rem;">[CIBLE NON TROUVÉE]</span>`;
+                    if (window.VoxUI) window.VoxUI.playEffect('error');
+                }
             } else if (data.success && data.category === 'interaction') {
                 // STT Parsing for Item Interaction (Prenez/Take or Posez/Drop)
                 // Normalize spoken text by removing trailing punctuation

@@ -86,8 +86,8 @@ $commandRegistry = [
     'navigation'  => ['pattern' => '/^(nord|sud|est|ouest|remonter|descendre|montez|descendez|sortir|pénétrer|entrer|allez)/', 'action' => 'move_player.php'],
     'observation' => ['pattern' => '/^(regarder|regardez|examiner|examinez|chercher|cherchez|inventaire)/', 'action' => ($cmdLower === 'inventaire') ? 'get_inventory.php' : 'get_room.php'],
     'interaction' => ['pattern' => '/^(prendre|prenez|poser|posez|utiliser|utilisez|ouvrir|ouvrez)/', 'action' => 'process_item.php'],
-    'social'      => ['pattern' => '/^(parlez|demandez|saluez)/', 'action' => 'trigger_dialogue_ui'],
-    'combat'      => ['pattern' => '/^(attaquez|fuyez|défendez|lancez)/', 'action' => 'process_combat.php']
+    'social'      => ['pattern' => '/^(parler|parle|parlez|demander|demandez|saluer|saluez)/', 'action' => 'trigger_dialogue_ui'],
+    'combat'      => ['pattern' => '/^(attaque|attaquez|jattaque|attaquer|fuyez|fuir|défendez|défendre|lancez|lancer)/', 'action' => 'process_combat.php']
 ];
 
 $matched = false;

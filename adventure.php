@@ -64,6 +64,7 @@ $locTitle = $locStmt->fetchColumn() ?: "Unknown Location";
 
     <!-- LOAD ENGINE LOGIC -->
     <script src="speech.js"></script>
+    <script src="combat.js"></script>
     <script src="navigation.js"></script>
     <script src="map.js"></script>
     <script src="inventory.js"></script>
