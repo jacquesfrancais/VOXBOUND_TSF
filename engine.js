@@ -47,10 +47,17 @@ function updateUI(data) {
         if (data.npcs && data.npcs.length > 0) {
             data.npcs.forEach(npc => {
                 const li = document.createElement('li');
-                li.style.cursor = "help";
-                li.onclick = () => startDialogue(npc.npcId, npc.npcNameFrench);
                 const name = (currentLanguage === 'fr') ? npc.npcNameFrench : npc.npcNameEnglish;
-                li.innerHTML = `• <span style="color:var(--primary-cyan)">[PARLER]</span> ${name} <span style="color:#666; font-style:italic;">"${npc.greetingFrench}"</span>`;
+
+                if (Number(npc.isDead) === 1) {
+                    // Render as a persistent lifeless object
+                    li.style.color = "#666";
+                    li.innerHTML = `• <span style="color:#ff5555">[CADAVRE]</span> ${name}`;
+                } else {
+                    li.style.cursor = "help";
+                    li.onclick = () => startDialogue(npc.npcId, npc.npcNameFrench);
+                    li.innerHTML = `• <span style="color:var(--primary-cyan)">[PARLER]</span> ${name} <span style="color:#666; font-style:italic;">"${npc.greetingFrench}"</span>`;
+                }
                 npcList.appendChild(li);
             });
         }
@@ -253,6 +260,7 @@ function startVoiceCommand() {
             } else if (data.success && data.category === 'combat') {
                 // Combat Target Detection
                 const spoken = result.spoken.toLowerCase();
+                // Look for the NPC name in the room regardless of life status
                 const roomNpcs = (lastRoomData && lastRoomData.npcs) ? lastRoomData.npcs : [];
                 const target = roomNpcs.find(npc => spoken.includes(npc.npcNameFrench.toLowerCase()));
 

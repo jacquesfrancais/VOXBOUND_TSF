@@ -17,6 +17,11 @@ $charId = $_SESSION['character_id'];
 $targetNpcId = (int)($data['npcId'] ?? 0);
 $tier = $data['tier'] ?? 'Pas compris';
 
+$debug_logs = [];
+function debug_log($msg) { global $debug_logs; $debug_logs[] = "[COMBAT_JUDGE] " . $msg; }
+
+debug_log("Turn initiated. Target: $targetNpcId | Linguistic Tier: $tier");
+
 $log = [];
 function combat_log($msg) { global $log; $log[] = $msg; }
 
@@ -37,16 +42,27 @@ try {
     $pStmt = $pdo->prepare("SELECT * FROM Characters WHERE id = ?");
     $pStmt->execute([$charId]);
     $player = $pStmt->fetch(PDO::FETCH_ASSOC);
+    debug_log("Player Data: HP={$player['hitPoints']}, STR={$player['strength']}");
 
     // Target Monster State
     $mStmt = $pdo->prepare("SELECT s.*, n.npcNameFrench, n.strength, n.agility FROM Character_NPC_State s JOIN Npcs n ON s.npcId = n.npcId WHERE s.characterId = ? AND s.npcId = ?");
     $mStmt->execute([$charId, $targetNpcId]);
     $monster = $mStmt->fetch(PDO::FETCH_ASSOC);
+    debug_log("Monster Data: HP={$monster['currentHitPoints']}, STR={$monster['strength']}");
+
+    // 1.5 ALIVE CHECK (Guard against attacking corpses)
+    if (!$monster || $monster['isDead'] == 1) {
+        debug_log("Abort: Target is already dead.");
+        combat_log("Cette cible est déjà sans vie.");
+        echo json_encode(['success' => true, 'victory' => true, 'log' => $log, 'debug' => $debug_logs]);
+        exit;
+    }
 
     // Allies State
     $aStmt = $pdo->prepare("SELECT s.*, n.npcNameFrench, n.strength FROM Character_NPC_State s JOIN Npcs n ON s.npcId = n.npcId WHERE s.characterId = ? AND s.isFollowing = 1 AND s.isDead = 0");
     $aStmt->execute([$charId]);
     $allies = $aStmt->fetchAll(PDO::FETCH_ASSOC);
+    debug_log("Allies Found: " . count($allies));
 
     $threatMap = []; // "on-the-fly" targeting pool
 
@@ -59,11 +75,13 @@ try {
         $wStmt = $pdo->prepare("SELECT l.extraData FROM ItemInstances i JOIN ItemLibrary l ON i.itemId = l.itemId WHERE i.characterId = ? AND i.ownerType = 'Player' AND i.itemId IN (SELECT itemId FROM ItemLibrary WHERE itemType = 'Weapon') LIMIT 1");
         $wStmt->execute([$charId]);
         $weapon = json_decode($wStmt->fetchColumn() ?: '{"dice":"1d4","strBonus":0}', true);
+        debug_log("Equipped Weapon: Dice={$weapon['dice']}, Bonus=" . ($weapon['strBonus'] ?? 0));
         
         $baseDamage = rollDice($weapon['dice'], ($tier === 'Parfait'));
         $totalDamage = $baseDamage + (int)$player['strength'] + (int)($weapon['strBonus'] ?? 0);
         if ($tier === 'Bien') $totalDamage = floor($totalDamage / 2);
 
+        debug_log("Player Strike Math: ($baseDamage + {$player['strength']} + " . ($weapon['strBonus'] ?? 0) . ") Mod: $tier = $totalDamage");
         $threatMap['player'] = $totalDamage;
         $monster['currentHitPoints'] -= $totalDamage;
         combat_log("Vous frappez le {$monster['npcNameFrench']} pour {$totalDamage} dégâts ! ({$tier})");
@@ -74,6 +92,7 @@ try {
         if ($monster['currentHitPoints'] <= 0) break;
         $allyDamage = rand(1, 4) + floor($ally['strength'] / 2);
         $threatMap['ally_'.$ally['npcId']] = $allyDamage;
+        debug_log("Ally {$ally['npcNameFrench']} Strike: $allyDamage");
         $monster['currentHitPoints'] -= $allyDamage;
         combat_log("{$ally['npcNameFrench']} attaque et inflige {$allyDamage} dégâts !");
     }
@@ -83,7 +102,7 @@ try {
         $monster['currentHitPoints'] = 0;
         $pdo->prepare("UPDATE Character_NPC_State SET currentHitPoints = 0, isDead = 1 WHERE characterId = ? AND npcId = ?")->execute([$charId, $targetNpcId]);
         combat_log("Le {$monster['npcNameFrench']} a été vaincu !");
-        echo json_encode(['success' => true, 'victory' => true, 'log' => $log]);
+        echo json_encode(['success' => true, 'victory' => true, 'log' => $log, 'debug' => $debug_logs]);
         exit;
     }
 
@@ -93,6 +112,7 @@ try {
     // 5. MONSTER RETALIATION (Targeting logic)
     // Determine who dealt the most damage this round
     arsort($threatMap);
+    debug_log("Threat Analysis (Sorted): " . json_encode($threatMap));
     $primaryThreat = key($threatMap);
 
     $mDamage = rand(1, 6) + floor($monster['strength'] / 2);
@@ -114,9 +134,10 @@ try {
         'success' => true,
         'victory' => false,
         'log' => $log,
-        'monsterHp' => $monster['currentHitPoints']
+        'monsterHp' => $monster['currentHitPoints'],
+        'debug' => $debug_logs
     ]);
 
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    echo json_encode(['success' => false, 'error' => $e->getMessage(), 'debug' => $debug_logs]);
 }

@@ -22,6 +22,7 @@ function startCombatTurn(transcription, tier, targetNpcId) {
     })
     .then(res => res.json())
     .then(data => {
+        if (data.debug) console.table(data.debug);
         if (data.success) {
             renderCombatRound(data);
         } else {
