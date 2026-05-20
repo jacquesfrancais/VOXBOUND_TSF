@@ -153,7 +153,8 @@ try {
 
             if (!empty($validExits)) {
                 $fleeNode = $validExits[array_rand($validExits)];
-                $pdo->prepare("UPDATE Character_NPC_State SET currentLocationId = ? WHERE characterId = ? AND npcId = ?")->execute([$fleeNode, $charId, $targetNpcId]);
+                // Fix: Persist currentHitPoints along with the new location
+                $pdo->prepare("UPDATE Character_NPC_State SET currentLocationId = ?, currentHitPoints = ? WHERE characterId = ? AND npcId = ?")->execute([$fleeNode, $monster['currentHitPoints'], $charId, $targetNpcId]);
                 
                 combat_log("Le {$monster['npcNameFrench']} a perdu courage et s'est enfui !");
                 echo json_encode(['success' => true, 'victory' => true, 'log' => $log, 'debug' => $debug_logs]);
@@ -199,7 +200,8 @@ try {
 
                 if (!empty($validExits)) {
                     $fleeNode = $validExits[array_rand($validExits)];
-                    $pdo->prepare("UPDATE Character_NPC_State SET currentLocationId = ? WHERE characterId = ? AND npcId = ?")->execute([$fleeNode, $charId, $threatId]);
+                    // Fix: Persist currentHitPoints along with the new location
+                    $pdo->prepare("UPDATE Character_NPC_State SET currentLocationId = ?, currentHitPoints = ? WHERE characterId = ? AND npcId = ?")->execute([$fleeNode, $newAllyHp, $charId, $threatId]);
                     combat_log("Touché grièvement, {$allyName} a pris la fuite vers une autre pièce !");
                 }
             }
