@@ -45,7 +45,7 @@ try {
     debug_log("Player Data: HP={$player['hitPoints']}, STR={$player['strength']}");
 
     // Target Monster State
-    $mStmt = $pdo->prepare("SELECT s.*, n.npcNameFrench, n.strength, n.agility FROM Character_NPC_State s JOIN Npcs n ON s.npcId = n.npcId WHERE s.characterId = ? AND s.npcId = ?");
+    $mStmt = $pdo->prepare("SELECT s.*, n.npcNameFrench, n.strength, n.agility, n.maxHitPoints FROM Character_NPC_State s JOIN Npcs n ON s.npcId = n.npcId WHERE s.characterId = ? AND s.npcId = ?");
     $mStmt->execute([$charId, $targetNpcId]);
     $monster = $mStmt->fetch(PDO::FETCH_ASSOC);
     debug_log("Monster Data: HP={$monster['currentHitPoints']}, STR={$monster['strength']}");
@@ -59,7 +59,7 @@ try {
     }
 
     // Allies State
-    $aStmt = $pdo->prepare("SELECT s.*, n.npcNameFrench, n.strength FROM Character_NPC_State s JOIN Npcs n ON s.npcId = n.npcId WHERE s.characterId = ? AND s.isFollowing = 1 AND s.isDead = 0");
+    $aStmt = $pdo->prepare("SELECT s.*, n.npcNameFrench, n.strength, n.maxHitPoints FROM Character_NPC_State s JOIN Npcs n ON s.npcId = n.npcId WHERE s.characterId = ? AND s.isFollowing = 1 AND s.isDead = 0");
     $aStmt->execute([$charId]);
     $allies = $aStmt->fetchAll(PDO::FETCH_ASSOC);
     debug_log("Allies Found: " . count($allies));
@@ -101,12 +101,68 @@ try {
     if ($monster['currentHitPoints'] <= 0) {
         $monster['currentHitPoints'] = 0;
         $pdo->prepare("UPDATE Character_NPC_State SET currentHitPoints = 0, isDead = 1 WHERE characterId = ? AND npcId = ?")->execute([$charId, $targetNpcId]);
+
+        // LOOT SYSTEM: Transfer lootable items from NPC to the Room
+        $lootStmt = $pdo->prepare("
+            SELECT i.instanceId, l.extraData 
+            FROM ItemInstances i 
+            JOIN ItemLibrary l ON i.itemId = l.itemId 
+            WHERE i.characterId = :charId AND i.ownerType = 'NPC' AND i.ownerId = :npcId
+        ");
+        $lootStmt->execute(['charId' => $charId, 'npcId' => $targetNpcId]);
+        $items = $lootStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($items as $item) {
+            $extra = json_decode($item['extraData'], true);
+            // Drop item if it isn't explicitly flagged as non-lootable (e.g. natural weapons)
+            if (!isset($extra['lootable']) || $extra['lootable'] !== false) {
+                $pdo->prepare("UPDATE ItemInstances SET ownerType = 'Room', ownerId = :locId WHERE instanceId = :instId")
+                    ->execute([
+                        'locId' => $monster['currentLocationId'],
+                        'instId' => $item['instanceId']
+                    ]);
+                debug_log("Loot instance {$item['instanceId']} dropped into Room {$monster['currentLocationId']}");
+            }
+        }
+
+        // 4.5 ATTRIBUTE BOOST (Linguistic Growth)
+        // The player gains 10% of the monster's base stats (minimum 1)
+        $strGain = (int)ceil($monster['strength'] * 0.10);
+        $agiGain = (int)ceil($monster['agility'] * 0.10);
+        $hpGain  = (int)ceil($monster['maxHitPoints'] * 0.10);
+
+        $pdo->prepare("UPDATE Characters SET strength = strength + ?, agility = agility + ?, hitPoints = hitPoints + ?, maxHitPoints = maxHitPoints + ? WHERE id = ?")
+            ->execute([$strGain, $agiGain, $hpGain, $hpGain, $charId]);
+
+        combat_log("Votre expérience augmente ! +$strGain Force, +$agiGain Agilité, +$hpGain Points de Vie.");
+        debug_log("Victory Boost applied: STR +$strGain, AGI +$agiGain, HP +$hpGain");
+
         combat_log("Le {$monster['npcNameFrench']} a été vaincu !");
         echo json_encode(['success' => true, 'victory' => true, 'log' => $log, 'debug' => $debug_logs]);
         exit;
     }
 
-    // Update monster health for now
+    // 3.5 MONSTER COURAGE CHECK
+    // If the monster is wounded but alive, check if they flee (25% threshold)
+    if ($monster['currentHitPoints'] > 0 && $monster['currentHitPoints'] <= ($monster['maxHitPoints'] * 0.25)) {
+        if (rand(1, 100) <= 50) {
+            $exitStmt = $pdo->prepare("SELECT northTarget, southTarget, eastTarget, westTarget, upTarget, downTarget, inTarget, outTarget FROM Locations WHERE nodeId = ?");
+            $exitStmt->execute([$monster['currentLocationId']]);
+            $exits = $exitStmt->fetch(PDO::FETCH_ASSOC);
+            $validExits = array_filter($exits, fn($v) => $v > 0);
+
+            if (!empty($validExits)) {
+                $fleeNode = $validExits[array_rand($validExits)];
+                $pdo->prepare("UPDATE Character_NPC_State SET currentLocationId = ? WHERE characterId = ? AND npcId = ?")->execute([$fleeNode, $charId, $targetNpcId]);
+                
+                combat_log("Le {$monster['npcNameFrench']} a perdu courage et s'est enfui !");
+                echo json_encode(['success' => true, 'victory' => true, 'log' => $log, 'debug' => $debug_logs]);
+                exit;
+            }
+        }
+    }
+
+    // Update monster health
     $pdo->prepare("UPDATE Character_NPC_State SET currentHitPoints = ? WHERE characterId = ? AND npcId = ?")->execute([$monster['currentHitPoints'], $charId, $targetNpcId]);
 
     // 5. MONSTER RETALIATION (Targeting logic)
@@ -122,12 +178,32 @@ try {
         combat_log("Le {$monster['npcNameFrench']} contre-attaque ! Vous perdez {$mDamage} HP.");
     } else {
         $threatId = (int)str_replace('ally_', '', $primaryThreat);
-        $pdo->prepare("UPDATE Character_NPC_State SET currentHitPoints = currentHitPoints - ? WHERE characterId = ? AND npcId = ?")->execute([$mDamage, $charId, $threatId]);
         
-        // Find ally name for log
-        $targetAlly = array_filter($allies, fn($a) => $a['npcId'] == $threatId);
-        $allyName = reset($targetAlly)['npcNameFrench'] ?? "votre allié";
+        // Find targeted ally object to check courage
+        $targetedAlly = null;
+        foreach ($allies as $a) { if ($a['npcId'] == $threatId) { $targetedAlly = $a; break; } }
+        
+        $newAllyHp = $targetedAlly['currentHitPoints'] - $mDamage;
+        $pdo->prepare("UPDATE Character_NPC_State SET currentHitPoints = ? WHERE characterId = ? AND npcId = ?")->execute([$newAllyHp, $charId, $threatId]);
+        
+        $allyName = $targetedAlly['npcNameFrench'] ?? "votre allié";
         combat_log("Le {$monster['npcNameFrench']} s'en prend à {$allyName} et lui inflige {$mDamage} dégâts.");
+
+        // 5.5 ALLY COURAGE CHECK
+        if ($newAllyHp > 0 && $newAllyHp <= ($targetedAlly['maxHitPoints'] * 0.25)) {
+            if (rand(1, 100) <= 50) {
+                $exitStmt = $pdo->prepare("SELECT northTarget, southTarget, eastTarget, westTarget, upTarget, downTarget, inTarget, outTarget FROM Locations WHERE nodeId = ?");
+                $exitStmt->execute([$targetedAlly['currentLocationId']]);
+                $exits = $exitStmt->fetch(PDO::FETCH_ASSOC);
+                $validExits = array_filter($exits, fn($v) => $v > 0);
+
+                if (!empty($validExits)) {
+                    $fleeNode = $validExits[array_rand($validExits)];
+                    $pdo->prepare("UPDATE Character_NPC_State SET currentLocationId = ? WHERE characterId = ? AND npcId = ?")->execute([$fleeNode, $charId, $threatId]);
+                    combat_log("Touché grièvement, {$allyName} a pris la fuite vers une autre pièce !");
+                }
+            }
+        }
     }
 
     echo json_encode([

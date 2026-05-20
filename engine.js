@@ -56,7 +56,8 @@ function updateUI(data) {
                 } else {
                     li.style.cursor = "help";
                     li.onclick = () => startDialogue(npc.npcId, npc.npcNameFrench);
-                    li.innerHTML = `• <span style="color:var(--primary-cyan)">[PARLER]</span> ${name} <span style="color:#666; font-style:italic;">"${npc.greetingFrench}"</span>`;
+                    const stats = `<span style="color:var(--accent-gold); font-size:0.7rem; opacity:0.8;"> [HP:${npc.currentHitPoints}/${npc.maxHitPoints} STR:${npc.strength} AGI:${npc.agility}]</span>`;
+                    li.innerHTML = `• <span style="color:var(--primary-cyan)">[PARLER]</span> ${name}${stats} <span style="color:#666; font-style:italic;">"${npc.greetingFrench}"</span>`;
                 }
                 npcList.appendChild(li);
             });
