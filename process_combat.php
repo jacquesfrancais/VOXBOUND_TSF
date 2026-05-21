@@ -36,6 +36,43 @@ function rollDice($diceStr, $isParfait = false) {
     return $total;
 }
 
+/**
+ * Determines if a hit is critical using a Sigmoid Curve (Soft Cap Method).
+ * Compares Attacker Agility vs Target Agility.
+ * @param int $attackerAgi
+ * @param int $targetAgi
+ * @return bool
+ */
+function checkCriticalHit($attackerAgi, $targetAgi) {
+    $diff = $attackerAgi - $targetAgi;
+    // Sigmoid Formula: MaxChance / (1 + e^(-k * (diff)))
+    // MaxChance = 25%, k (steepness) = 0.15
+    $k = 0.15;
+    $maxChance = 25;
+    $probability = $maxChance / (1 + exp(-$k * $diff));
+    
+    $roll = rand(1, 1000) / 10; // Precision roll 0.1 to 100.0
+    return ($roll <= $probability);
+}
+
+/**
+ * Determines if an attack is dodged using a Sigmoid Curve.
+ * @param int $attackerAgi
+ * @param int $defenderAgi
+ * @return bool
+ */
+function checkAvoidance($attackerAgi, $defenderAgi) {
+    $diff = $defenderAgi - $attackerAgi;
+    // Max Avoidance = 20%, baseline at equal Agi = 10%
+    $k = 0.15;
+    $maxAvoidance = 20;
+    $probability = $maxAvoidance / (1 + exp(-$k * $diff));
+
+    debug_log("Avoidance Calc: AttackerAgi=$attackerAgi, DefenderAgi=$defenderAgi, Diff=$diff, Probability=" . round($probability, 2) . "%");
+    $roll = rand(1, 1000) / 10;
+    return ($roll <= $probability);
+}
+
 try {
     // 1. FETCH ACTORS
     // Player Stats
@@ -50,6 +87,13 @@ try {
     $monster = $mStmt->fetch(PDO::FETCH_ASSOC);
     debug_log("Monster Data: HP={$monster['currentHitPoints']}, STR={$monster['strength']}");
 
+    // Fetch Monster Armor
+    $mArmorStmt = $pdo->prepare("SELECT l.extraData FROM ItemInstances i JOIN ItemLibrary l ON i.itemId = l.itemId WHERE i.characterId = ? AND i.ownerType = 'NPC' AND i.ownerId = ? AND l.itemType = 'Armor' LIMIT 1");
+    $mArmorStmt->execute([$charId, $targetNpcId]);
+    $mArmorJson = $mArmorStmt->fetchColumn();
+    $monsterArmor = $mArmorJson ? (int)(json_decode($mArmorJson, true)['armorValue'] ?? 0) : 0;
+    debug_log("Monster Armor: $monsterArmor");
+
     // 1.5 ALIVE CHECK (Guard against attacking corpses)
     if (!$monster || $monster['isDead'] == 1) {
         debug_log("Abort: Target is already dead.");
@@ -63,6 +107,13 @@ try {
     $aStmt->execute([$charId]);
     $allies = $aStmt->fetchAll(PDO::FETCH_ASSOC);
     debug_log("Allies Found: " . count($allies));
+
+    // Fetch Player Armor
+    $pArmorStmt = $pdo->prepare("SELECT l.extraData FROM ItemInstances i JOIN ItemLibrary l ON i.itemId = l.itemId WHERE i.characterId = ? AND i.ownerType = 'Player' AND l.itemType = 'Armor' LIMIT 1");
+    $pArmorStmt->execute([$charId]);
+    $pArmorJson = $pArmorStmt->fetchColumn();
+    $playerArmor = $pArmorJson ? (int)(json_decode($pArmorJson, true)['armorValue'] ?? 0) : 0;
+    debug_log("Player Armor: $playerArmor");
 
     $threatMap = []; // "on-the-fly" targeting pool
 
@@ -82,19 +133,60 @@ try {
         if ($tier === 'Bien') $totalDamage = floor($totalDamage / 2);
 
         debug_log("Player Strike Math: ($baseDamage + {$player['strength']} + " . ($weapon['strBonus'] ?? 0) . ") Mod: $tier = $totalDamage");
-        $threatMap['player'] = $totalDamage;
-        $monster['currentHitPoints'] -= $totalDamage;
-        combat_log("Vous frappez le {$monster['npcNameFrench']} pour {$totalDamage} dégâts ! ({$tier})");
+
+        // 2.5 AVOIDANCE CHECK (Monster dodging Player)
+        $isDodged = checkAvoidance((int)$player['agility'], (int)$monster['agility']);
+
+        if ($isDodged) {
+            $netDamage = 0;
+            debug_log("Avoidance Triggered: Monster dodged Player attack.");
+            combat_log("Le {$monster['npcNameFrench']} a esquivé votre attaque !");
+        } else {
+            // Critical Hit Check (Player vs Monster)
+            $isCrit = checkCriticalHit((int)$player['agility'], (int)$monster['agility']);
+            $effectiveArmor = $isCrit ? 0 : $monsterArmor;
+            
+            if ($isCrit) debug_log("CRITICAL HIT! Sigmoid Probability triggered. Armor bypassed.");
+
+            // Apply Armor Absorption
+            $netDamage = max(0, $totalDamage - $effectiveArmor);
+            debug_log("Damage vs Monster: $totalDamage - $effectiveArmor armor = $netDamage final");
+        }
+
+        $threatMap['player'] = $netDamage;
+        $monster['currentHitPoints'] -= $netDamage;
+        $msg = $isCrit ? "COUP CRITIQUE ! Vous frappez le " : "Vous frappez le ";
+        combat_log($msg . "{$monster['npcNameFrench']} pour {$netDamage} dégâts ! ({$tier})");
     }
 
     // 3. ALLY TURNS (Automatic support)
     foreach ($allies as $ally) {
         if ($monster['currentHitPoints'] <= 0) break;
         $allyDamage = rand(1, 4) + floor($ally['strength'] / 2);
-        $threatMap['ally_'.$ally['npcId']] = $allyDamage;
-        debug_log("Ally {$ally['npcNameFrench']} Strike: $allyDamage");
-        $monster['currentHitPoints'] -= $allyDamage;
-        combat_log("{$ally['npcNameFrench']} attaque et inflige {$allyDamage} dégâts !");
+        
+        // AVOIDANCE CHECK (Monster dodging Ally)
+        $isDodged = checkAvoidance((int)$ally['agility'], (int)$monster['agility']);
+
+        if ($isDodged) {
+            $netAllyDmg = 0;
+            debug_log("Avoidance Triggered: Monster dodged Ally {$ally['npcNameFrench']}.");
+        } else {
+            // Critical Hit Check (Ally vs Monster)
+            $isCrit = checkCriticalHit((int)$ally['agility'], (int)$monster['agility']);
+            $effectiveArmor = $isCrit ? 0 : $monsterArmor;
+            $netAllyDmg = max(0, $allyDamage - $effectiveArmor);
+            if ($isCrit) debug_log("Ally {$ally['npcNameFrench']} LANDED A CRIT!");
+        }
+
+        $threatMap['ally_'.$ally['npcId']] = $netAllyDmg;
+        $monster['currentHitPoints'] -= $netAllyDmg;
+        
+        if ($isDodged) {
+            combat_log("{$ally['npcNameFrench']} a attaqué, mais le {$monster['npcNameFrench']} a esquivé !");
+        } else {
+            $msg = $isCrit ? "COUP CRITIQUE ! {$ally['npcNameFrench']} attaque : " : "{$ally['npcNameFrench']} attaque : ";
+            combat_log($msg . "{$netAllyDmg} dégâts !");
+        }
     }
 
     // 4. CHECK MONSTER DEATH
@@ -175,8 +267,26 @@ try {
     $mDamage = rand(1, 6) + floor($monster['strength'] / 2);
     
     if ($primaryThreat === 'player') {
-        $pdo->prepare("UPDATE Characters SET hitPoints = hitPoints - ? WHERE id = ?")->execute([$mDamage, $charId]);
-        combat_log("Le {$monster['npcNameFrench']} contre-attaque ! Vous perdez {$mDamage} HP.");
+        // AVOIDANCE CHECK (Player dodging Monster)
+        $isDodged = checkAvoidance((int)$monster['agility'], (int)$player['agility']);
+
+        if ($isDodged) {
+            $netPlayerDmg = 0;
+            debug_log("Avoidance Triggered: Player dodged Monster attack.");
+            combat_log("Vous avez esquivé l'attaque du {$monster['npcNameFrench']} !");
+        } else {
+            // Critical Hit Check (Monster vs Player)
+            $isCrit = checkCriticalHit((int)$monster['agility'], (int)$player['agility']);
+            $effectiveArmor = $isCrit ? 0 : $playerArmor;
+            $netPlayerDmg = max(0, $mDamage - $effectiveArmor);
+            debug_log("Monster vs Player: $mDamage - $effectiveArmor armor = $netPlayerDmg final");
+        }
+        
+        $pdo->prepare("UPDATE Characters SET hitPoints = hitPoints - ? WHERE id = ?")->execute([$netPlayerDmg, $charId]);
+        if (!$isDodged) {
+            $msg = $isCrit ? "COUP CRITIQUE ! Le {$monster['npcNameFrench']} " : "Le {$monster['npcNameFrench']} ";
+            combat_log($msg . "contre-attaque ! Vous perdez {$netPlayerDmg} HP.");
+        }
     } else {
         $threatId = (int)str_replace('ally_', '', $primaryThreat);
         
@@ -184,11 +294,35 @@ try {
         $targetedAlly = null;
         foreach ($allies as $a) { if ($a['npcId'] == $threatId) { $targetedAlly = $a; break; } }
         
-        $newAllyHp = $targetedAlly['currentHitPoints'] - $mDamage;
+        // Fetch Ally Armor
+        $aArmorStmt = $pdo->prepare("SELECT l.extraData FROM ItemInstances i JOIN ItemLibrary l ON i.itemId = l.itemId WHERE i.characterId = ? AND i.ownerType = 'NPC' AND i.ownerId = ? AND l.itemType = 'Armor' LIMIT 1");
+        $aArmorStmt->execute([$charId, $threatId]);
+        $aArmorJson = $aArmorStmt->fetchColumn();
+        $allyArmor = $aArmorJson ? (int)(json_decode($aArmorJson, true)['armorValue'] ?? 0) : 0;
+
+        // AVOIDANCE CHECK (Ally dodging Monster)
+        $isDodged = checkAvoidance((int)$monster['agility'], (int)$targetedAlly['agility']);
+        $allyName = $targetedAlly['npcNameFrench'] ?? "votre allié";
+
+        if ($isDodged) {
+            $netAllyDmg = 0;
+            debug_log("Avoidance Triggered: Ally $allyName dodged Monster attack.");
+            combat_log("$allyName a esquivé l'attaque du {$monster['npcNameFrench']} !");
+        } else {
+            // Critical Hit Check (Monster vs Ally)
+            $isCrit = checkCriticalHit((int)$monster['agility'], (int)$targetedAlly['agility']);
+            $effectiveArmor = $isCrit ? 0 : $allyArmor;
+            $netAllyDmg = max(0, $mDamage - $effectiveArmor);
+            debug_log("Monster vs Ally: $mDamage - $effectiveArmor armor = $netAllyDmg final");
+        }
+
+        $newAllyHp = $targetedAlly['currentHitPoints'] - $netAllyDmg;
         $pdo->prepare("UPDATE Character_NPC_State SET currentHitPoints = ? WHERE characterId = ? AND npcId = ?")->execute([$newAllyHp, $charId, $threatId]);
         
-        $allyName = $targetedAlly['npcNameFrench'] ?? "votre allié";
-        combat_log("Le {$monster['npcNameFrench']} s'en prend à {$allyName} et lui inflige {$mDamage} dégâts.");
+        if (!$isDodged) {
+            $msg = $isCrit ? "COUP CRITIQUE ! Le {$monster['npcNameFrench']} " : "Le {$monster['npcNameFrench']} ";
+            combat_log($msg . "s'en prend à {$allyName} et lui inflige {$netAllyDmg} dégâts.");
+        }
 
         // 5.5 ALLY COURAGE CHECK
         if ($newAllyHp > 0 && $newAllyHp <= ($targetedAlly['maxHitPoints'] * 0.25)) {
