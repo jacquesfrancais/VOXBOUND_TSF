@@ -57,8 +57,9 @@ function updateUI(data) {
                     const stats = `<span style="color:var(--accent-gold); font-size:0.7rem; opacity:0.8;"> [HP:${npc.currentHitPoints}/${npc.maxHitPoints} STR:${npc.strength} AGI:${npc.agility}]</span>`;
                     const attBtn = `<span style="cursor:pointer; color:var(--accent-gold);" onclick="startCombatTurn('J\\\'attaque', 'Bien', ${npc.npcId})">[ATTAQUER]</span>`;
                     const parlBtn = `<span style="cursor:help; color:var(--primary-cyan);" onclick="startDialogue(${npc.npcId}, '${npc.npcNameFrench.replace(/'/g, "\\'")}')">[PARLER]</span>`;
+                    const greeting = (currentLanguage === 'fr') ? npc.greetingFrench : npc.greetingEnglish;
                     
-                    li.innerHTML = `• ${attBtn} ${parlBtn} ${name}${stats} <span style="color:#666; font-style:italic;">"${npc.greetingFrench}"</span>`;
+                    li.innerHTML = `• ${attBtn} ${parlBtn} ${name}${stats} <span style="color:#666; font-style:italic;">"${greeting}"</span>`;
                 }
                 npcList.appendChild(li);
             });
