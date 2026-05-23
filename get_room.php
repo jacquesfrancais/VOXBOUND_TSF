@@ -81,7 +81,7 @@ try {
     // 6. FETCH ITEMS IN ROOM
     // In the new schema, items on the floor have ownerType = 'Room'
     $itemStmt = $pdo->prepare("
-        SELECT i.instanceId, l.nameFrench, l.nameEnglish, l.weight, l.extraData
+        SELECT i.instanceId, l.nameFrench, l.nameEnglish, l.weight, COALESCE(i.extraData, l.extraData) as extraData
         FROM ItemInstances i
         JOIN ItemLibrary l ON i.itemId = l.itemId
         WHERE i.characterId = :charId AND i.ownerType = 'Room' AND i.ownerId = :nodeId
@@ -91,7 +91,7 @@ try {
 
     // 6.2 FETCH PLAYER INVENTORY
     $invStmt = $pdo->prepare("
-        SELECT i.instanceId, l.nameFrench, l.nameEnglish, l.weight, i.isEquipped, l.itemType
+        SELECT i.instanceId, l.nameFrench, l.nameEnglish, l.weight, i.isEquipped, l.itemType, COALESCE(i.extraData, l.extraData) as extraData
         FROM ItemInstances i
         JOIN ItemLibrary l ON i.itemId = l.itemId
         WHERE i.characterId = :charId AND i.ownerType = 'Player' AND i.ownerId = :ownerId

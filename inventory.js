@@ -76,3 +76,33 @@ function equipItem(instanceId) {
     })
     .catch(err => console.error("[ENGINE] Item equipment communication error:", err));
 }
+
+/**
+ * ITEM SYSTEM: Sends a request to use a consumable item.
+ * @param {number} instanceId 
+ */
+function useItem(instanceId) {
+    // Per blueprint: Consumables are restricted outside of active combat mode.
+    if (typeof isCombatActive !== 'undefined' && isCombatActive) {
+        const feedbackArea = document.getElementById('command-feedback');
+        if (feedbackArea) feedbackArea.innerHTML = `<span style="color:#ff5555;">&gt; Impossible d'utiliser des objets en plein combat !</span>`;
+        return;
+    }
+
+    fetch('process_item.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'use', instanceId: instanceId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.debug) console.table(data.debug);
+        if (data.success) {
+            const feedbackArea = document.getElementById('command-feedback');
+            if (feedbackArea) feedbackArea.innerHTML = `<span style="color:var(--primary-cyan);">&gt; ${data.message}</span>`;
+            if (typeof initializeGame === 'function') initializeGame();
+        } else {
+            alert(data.error);
+        }
+    });
+}
