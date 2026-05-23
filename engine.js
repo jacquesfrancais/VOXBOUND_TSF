@@ -18,7 +18,10 @@ function updateUI(data) {
     console.log("[ENGINE DEBUG] Updating UI with incoming data packet.");
     refreshCommandManual();
 
-    if (isDialogueActive) return; // Prevent world updates from breaking dialogue view
+    // GUARD: Do not overwrite the console if a Dialogue or Combat result is active
+    if (isDialogueActive || (typeof isCombatActive !== 'undefined' && isCombatActive)) {
+        return;
+    }
 
     // 1. Update Identity & Location
     const locationDisplay = document.getElementById('location-id-display');
@@ -44,10 +47,19 @@ function updateUI(data) {
         if (data.npcs && data.npcs.length > 0) {
             data.npcs.forEach(npc => {
                 const li = document.createElement('li');
-                li.style.cursor = "help";
-                li.onclick = () => startDialogue(npc.npcId, npc.npcNameFrench);
                 const name = (currentLanguage === 'fr') ? npc.npcNameFrench : npc.npcNameEnglish;
-                li.innerHTML = `• <span style="color:var(--primary-cyan)">[PARLER]</span> ${name} <span style="color:#666; font-style:italic;">"${npc.greetingFrench}"</span>`;
+
+                if (Number(npc.isDead) === 1) {
+                    // Render as a persistent lifeless object
+                    li.style.color = "#666";
+                    li.innerHTML = `• <span style="color:#ff5555">[CADAVRE]</span> ${name}`;
+                } else {
+                    const stats = `<span style="color:var(--accent-gold); font-size:0.7rem; opacity:0.8;"> [HP:${npc.currentHitPoints}/${npc.maxHitPoints} STR:${npc.strength} AGI:${npc.agility}]</span>`;
+                    const attBtn = `<span style="cursor:pointer; color:var(--accent-gold);" onclick="startCombatTurn('J\\\'attaque', 'Bien', ${npc.npcId})">[ATTAQUER]</span>`;
+                    const parlBtn = `<span style="cursor:help; color:var(--primary-cyan);" onclick="startDialogue(${npc.npcId}, '${npc.npcNameFrench.replace(/'/g, "\\'")}')">[PARLER]</span>`;
+                    
+                    li.innerHTML = `• ${attBtn} ${parlBtn} ${name}${stats} <span style="color:#666; font-style:italic;">"${npc.greetingFrench}"</span>`;
+                }
                 npcList.appendChild(li);
             });
         }
@@ -102,7 +114,15 @@ function updateUI(data) {
             data.inventory.forEach(item => {
                 const li = document.createElement('li');
                 const name = (currentLanguage === 'fr') ? item.nameFrench : item.nameEnglish;
+
+                let equipBtn = '';
+                if (item.itemType === 'Weapon' || item.itemType === 'Armor') {
+                    const activeStyle = (item.isEquipped == 1) ? 'background:var(--accent-gold); color:#000;' : '';
+                    equipBtn = `<button class="btn-outline" onclick="equipItem(${item.instanceId})" style="font-size:0.6rem; padding:1px 4px; margin-left:5px; ${activeStyle}">ÉQUIPER</button>`;
+                }
+
                 li.innerHTML = `• ${name} <span style="color:#444; font-size:0.7rem;">(${item.weight}kg)</span> 
+                                ${equipBtn}
                                 <button class="btn-outline" onclick="dropItem(${item.instanceId})" style="font-size:0.6rem; padding:1px 4px; margin-left:5px; border-color:#888; color:#888;">POSER</button>`;
                 invList.appendChild(li);
             });
@@ -247,6 +267,19 @@ function startVoiceCommand() {
             if (data.success && data.category === 'navigation') {
                 // Execute the movement identified by the Judge
                 handleMove(data.command);
+            } else if (data.success && data.category === 'combat') {
+                // Combat Target Detection
+                const spoken = result.spoken.toLowerCase();
+                // Look for the NPC name in the room regardless of life status
+                const roomNpcs = (lastRoomData && lastRoomData.npcs) ? lastRoomData.npcs : [];
+                const target = roomNpcs.find(npc => spoken.includes(npc.npcNameFrench.toLowerCase()));
+
+                if (target) {
+                    if (typeof startCombatTurn === 'function') startCombatTurn(result.spoken, result.tier, target.npcId);
+                } else {
+                    feedbackArea.innerHTML += ` <span style="color:#ff5555; font-size:0.7rem;">[CIBLE NON TROUVÉE]</span>`;
+                    if (window.VoxUI) window.VoxUI.playEffect('error');
+                }
             } else if (data.success && data.category === 'interaction') {
                 // STT Parsing for Item Interaction (Prenez/Take or Posez/Drop)
                 // Normalize spoken text by removing trailing punctuation
@@ -262,7 +295,7 @@ function startVoiceCommand() {
                         feedbackArea.innerHTML += ` <span style="color:#ff5555; font-size:0.7rem;">[OBJET NON TROUVÉ]</span>`;
                         if (window.VoxUI) window.VoxUI.playEffect('error');
                     }
-                } else if (spoken.includes("posez") || spoken.includes("poser")) {
+                } else if (spoken.includes("posez") || spoken.includes("poser") || spoken.includes("posé")) {
                     const playerInv = (lastRoomData && lastRoomData.inventory) ? lastRoomData.inventory : [];
                     const itemToDrop = playerInv.find(item => spoken.includes(item.nameFrench.toLowerCase()));
                     

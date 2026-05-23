@@ -59,10 +59,10 @@ try {
     // 5. FETCH NPCs IN ROOM
     // Join the state table with the library to get names for the specific character
     $npcStmt = $pdo->prepare("
-        SELECT n.npcId, n.npcNameFrench, n.npcNameEnglish 
+        SELECT n.npcId, n.npcNameFrench, n.npcNameEnglish, n.greetingFrench, CAST(s.isDead AS UNSIGNED) as isDead, s.currentHitPoints, n.maxHitPoints, n.strength, n.agility
         FROM Character_NPC_State s
         JOIN Npcs n ON s.npcId = n.npcId
-        WHERE s.characterId = :charId AND s.currentLocationId = :nodeId AND s.isDead = 0
+        WHERE s.characterId = :charId AND s.currentLocationId = :nodeId
     ");
     $npcStmt->execute(['charId' => $_SESSION['character_id'], 'nodeId' => $nodeId]);
     $npcs = $npcStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -91,7 +91,7 @@ try {
 
     // 6.2 FETCH PLAYER INVENTORY
     $invStmt = $pdo->prepare("
-        SELECT i.instanceId, l.nameFrench, l.nameEnglish, l.weight
+        SELECT i.instanceId, l.nameFrench, l.nameEnglish, l.weight, i.isEquipped, l.itemType
         FROM ItemInstances i
         JOIN ItemLibrary l ON i.itemId = l.itemId
         WHERE i.characterId = :charId AND i.ownerType = 'Player' AND i.ownerId = :ownerId

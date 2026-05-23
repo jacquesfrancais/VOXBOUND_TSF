@@ -124,7 +124,7 @@ This is the Lingua Quest Project Bible (v2.5). It serves as the definitive techn
    * Bien (≥0.75): Half Damage.
    * Pas compris (<0.75): Missed Turn.
 * The Ally System: Recruited NPCs (isFollowing) are filtered into the playerParty and add their Strength to the player’s combat turns via the process_combat.php judge.
-* NPC Courage: Hostile NPCs have a 50% chance to flee to an adjacent room if their HP drops below 15%.
+* NPC Courage: Hostile NPCs have a 50% chance to flee to an adjacent room if their HP drops below 25%.
 * Victory & Death:
 * Victory: Triggers handle_victory.php to drop loot on the floor and boost player attributes by a percentage of the defeated foe.
    * Death: Triggers reset_game.php, applying a 10% Gold penalty and respawning the player at their respawnNodeId.
