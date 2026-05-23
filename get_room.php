@@ -59,7 +59,7 @@ try {
     // 5. FETCH NPCs IN ROOM
     // Join the state table with the library to get names for the specific character
     $npcStmt = $pdo->prepare("
-        SELECT n.npcId, n.npcNameFrench, n.npcNameEnglish, n.greetingFrench, CAST(s.isDead AS UNSIGNED) as isDead, s.currentHitPoints, n.maxHitPoints, n.strength, n.agility
+        SELECT n.npcId, n.npcNameFrench, n.npcNameEnglish, n.greetingFrench, n.greetingEnglish, CAST(s.isDead AS UNSIGNED) as isDead, s.currentHitPoints, n.maxHitPoints, n.strength, n.agility
         FROM Character_NPC_State s
         JOIN Npcs n ON s.npcId = n.npcId
         WHERE s.characterId = :charId AND s.currentLocationId = :nodeId
@@ -81,7 +81,7 @@ try {
     // 6. FETCH ITEMS IN ROOM
     // In the new schema, items on the floor have ownerType = 'Room'
     $itemStmt = $pdo->prepare("
-        SELECT i.instanceId, l.nameFrench, l.nameEnglish, l.weight, l.extraData
+        SELECT i.instanceId, l.nameFrench, l.nameEnglish, l.weight, COALESCE(i.extraData, l.extraData) as extraData
         FROM ItemInstances i
         JOIN ItemLibrary l ON i.itemId = l.itemId
         WHERE i.characterId = :charId AND i.ownerType = 'Room' AND i.ownerId = :nodeId
@@ -91,7 +91,7 @@ try {
 
     // 6.2 FETCH PLAYER INVENTORY
     $invStmt = $pdo->prepare("
-        SELECT i.instanceId, l.nameFrench, l.nameEnglish, l.weight, i.isEquipped, l.itemType
+        SELECT i.instanceId, l.nameFrench, l.nameEnglish, l.weight, i.isEquipped, l.itemType, COALESCE(i.extraData, l.extraData) as extraData
         FROM ItemInstances i
         JOIN ItemLibrary l ON i.itemId = l.itemId
         WHERE i.characterId = :charId AND i.ownerType = 'Player' AND i.ownerId = :ownerId

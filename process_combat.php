@@ -132,7 +132,7 @@ function handleLootDrop($pdo, $charId, $npcId, $locationId) {
     foreach ($items as $item) {
         $extra = json_decode($item['extraData'], true);
         if (!isset($extra['lootable']) || $extra['lootable'] !== false) {
-            $pdo->prepare("UPDATE ItemInstances SET ownerType = 'Room', ownerId = ? WHERE instanceId = ?")->execute([$locationId, $item['instanceId']]);
+            $pdo->prepare("UPDATE ItemInstances SET ownerType = 'Room', ownerId = ?, isEquipped = 0 WHERE instanceId = ?")->execute([$locationId, $item['instanceId']]);
             debug_log("Loot Dropped: Instance {$item['instanceId']} moved to Node $locationId.");
         }
     }

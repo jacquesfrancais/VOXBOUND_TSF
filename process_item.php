@@ -79,7 +79,7 @@ $charStmt->execute(['id' => $charId]);
         // 6. EXECUTE THE TRANSFER
         $updateStmt = $pdo->prepare("
             UPDATE ItemInstances 
-            SET ownerType = 'Player', ownerId = :charId 
+            SET ownerType = 'Player', ownerId = :charId, isEquipped = 0 
             WHERE instanceId = :instId
         ");
         $updateStmt->execute(['charId' => $charId, 'instId' => $instanceId]);
@@ -107,7 +107,7 @@ $charStmt->execute(['id' => $charId]);
         // 4. EXECUTE THE TRANSFER (Move instance to the current Room)
         $updateStmt = $pdo->prepare("
             UPDATE ItemInstances 
-            SET ownerType = 'Room', ownerId = :locId 
+            SET ownerType = 'Room', ownerId = :locId, isEquipped = 0 
             WHERE instanceId = :instId
         ");
         $updateStmt->execute([
@@ -165,6 +165,80 @@ $charStmt->execute(['id' => $charId]);
         }
 
         echo json_encode(['success' => true, 'debug' => $debug_logs]);
+    } elseif ($action === 'use') {
+        // 1. Fetch Item and Player Stats
+        $stmt = $pdo->prepare("
+            SELECT i.instanceId, l.nameFrench, l.extraData, l.itemType, c.hitPoints, c.maxHitPoints, c.strength, c.agility
+            FROM ItemInstances i 
+            JOIN ItemLibrary l ON i.itemId = l.itemId 
+            JOIN Characters c ON i.characterId = c.id
+            WHERE i.instanceId = ? AND i.characterId = ? AND i.ownerType = 'Player'
+        ");
+        $stmt->execute([$instanceId, $charId]);
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$data || $data['itemType'] !== 'Consumable') {
+            throw new Exception("Cet objet ne peut pas être utilisé.");
+        }
+
+        // Prioritize Instance-specific data (charges) over Library defaults
+        $instanceStmt = $pdo->prepare("SELECT extraData FROM ItemInstances WHERE instanceId = ?");
+        $instanceStmt->execute([$instanceId]);
+        $instanceExtra = $instanceStmt->fetchColumn();
+        
+        $extra = json_decode($instanceExtra ?: $data['extraData'], true) ?: [];
+
+        $feedback = "Vous avez utilisé : " . $data['nameFrench'] . ". ";
+        
+        // 2. Adjudicate Effects (Scalable for future buffs)
+        $updates = [];
+        $params = [':id' => $charId];
+
+        if (isset($extra['hpRestore'])) {
+            $newHp = min($data['maxHitPoints'], $data['hitPoints'] + $extra['hpRestore']);
+            $updates[] = "hitPoints = :hp";
+            $params[':hp'] = $newHp;
+            $feedback .= "+" . ($newHp - $data['hitPoints']) . " HP. ";
+        }
+        
+        if (isset($extra['strBoost'])) {
+            $updates[] = "strength = strength + :sb";
+            $params[':sb'] = (int)$extra['strBoost'];
+            $feedback .= "+" . $extra['strBoost'] . " STR. ";
+        }
+
+        if (isset($extra['agiBoost'])) {
+            $updates[] = "agility = agility + :ab";
+            $params[':ab'] = (int)$extra['agiBoost'];
+            $feedback .= "+" . $extra['agiBoost'] . " AGI. ";
+        }
+
+        if (!empty($updates)) {
+            $sql = "UPDATE Characters SET " . implode(', ', $updates) . " WHERE id = :id";
+            $pdo->prepare($sql)->execute($params);
+        }
+
+        // 3. Adjudicate Charges
+        $charges = isset($extra['charges']) ? (int)$extra['charges'] : 1;
+        $charges--;
+
+        if ($charges <= 0) {
+            // Item spent
+            $pdo->prepare("DELETE FROM ItemInstances WHERE instanceId = ?")->execute([$instanceId]);
+            debug_log("Consumable instance $instanceId depleted and removed.");
+        } else {
+            // Update charges in JSON
+            $extra['charges'] = $charges;
+            $newJson = json_encode($extra);
+            $pdo->prepare("UPDATE ItemInstances SET extraData = ? WHERE instanceId = ?")->execute([$newJson, $instanceId]);
+            $feedback .= "($charges utilisations restantes)";
+        }
+
+        echo json_encode([
+            'success' => true,
+            'message' => $feedback,
+            'debug' => $debug_logs
+        ]);
     }
 
 } catch (Exception $e) {

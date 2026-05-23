@@ -57,8 +57,9 @@ function updateUI(data) {
                     const stats = `<span style="color:var(--accent-gold); font-size:0.7rem; opacity:0.8;"> [HP:${npc.currentHitPoints}/${npc.maxHitPoints} STR:${npc.strength} AGI:${npc.agility}]</span>`;
                     const attBtn = `<span style="cursor:pointer; color:var(--accent-gold);" onclick="startCombatTurn('J\\\'attaque', 'Bien', ${npc.npcId})">[ATTAQUER]</span>`;
                     const parlBtn = `<span style="cursor:help; color:var(--primary-cyan);" onclick="startDialogue(${npc.npcId}, '${npc.npcNameFrench.replace(/'/g, "\\'")}')">[PARLER]</span>`;
+                    const greeting = (currentLanguage === 'fr') ? npc.greetingFrench : npc.greetingEnglish;
                     
-                    li.innerHTML = `• ${attBtn} ${parlBtn} ${name}${stats} <span style="color:#666; font-style:italic;">"${npc.greetingFrench}"</span>`;
+                    li.innerHTML = `• ${attBtn} ${parlBtn} ${name}${stats} <span style="color:#666; font-style:italic;">"${greeting}"</span>`;
                 }
                 npcList.appendChild(li);
             });
@@ -115,14 +116,16 @@ function updateUI(data) {
                 const li = document.createElement('li');
                 const name = (currentLanguage === 'fr') ? item.nameFrench : item.nameEnglish;
 
-                let equipBtn = '';
+                let actionBtns = '';
                 if (item.itemType === 'Weapon' || item.itemType === 'Armor') {
                     const activeStyle = (item.isEquipped == 1) ? 'background:var(--accent-gold); color:#000;' : '';
-                    equipBtn = `<button class="btn-outline" onclick="equipItem(${item.instanceId})" style="font-size:0.6rem; padding:1px 4px; margin-left:5px; ${activeStyle}">ÉQUIPER</button>`;
+                    actionBtns = `<button class="btn-outline" onclick="equipItem(${item.instanceId})" style="font-size:0.6rem; padding:1px 4px; margin-left:5px; ${activeStyle}">ÉQUIPER</button>`;
+                } else if (item.itemType === 'Consumable') {
+                    actionBtns = `<button class="btn-outline" onclick="useItem(${item.instanceId})" style="font-size:0.6rem; padding:1px 4px; margin-left:5px; border-color:var(--accent-gold); color:var(--accent-gold);">UTILISER</button>`;
                 }
 
                 li.innerHTML = `• ${name} <span style="color:#444; font-size:0.7rem;">(${item.weight}kg)</span> 
-                                ${equipBtn}
+                                ${actionBtns}
                                 <button class="btn-outline" onclick="dropItem(${item.instanceId})" style="font-size:0.6rem; padding:1px 4px; margin-left:5px; border-color:#888; color:#888;">POSER</button>`;
                 invList.appendChild(li);
             });
@@ -303,6 +306,19 @@ function startVoiceCommand() {
                         dropItem(itemToDrop.instanceId);
                     } else {
                         feedbackArea.innerHTML += ` <span style="color:#ff5555; font-size:0.7rem;">[NON DANS L'INVENTAIRE]</span>`;
+                        if (window.VoxUI) window.VoxUI.playEffect('error');
+                    }
+                } else if (spoken.includes("utiliser")) {
+                    // Smart Matching: Ignore articles (le, la, l', les)
+                    const playerInv = (lastRoomData && lastRoomData.inventory) ? lastRoomData.inventory : [];
+                    const strip = (s) => s.toLowerCase().replace(/^(le |la |les |l')/i, "").trim();
+                    
+                    const spokenItem = strip(spoken.replace("utiliser", ""));
+                    const target = playerInv.find(item => strip(item.nameFrench) === spokenItem);
+
+                    if (target) useItem(target.instanceId);
+                    else {
+                        feedbackArea.innerHTML += ` <span style="color:#ff5555; font-size:0.7rem;">[NON TROUVÉ DANS L'INVENTAIRE]</span>`;
                         if (window.VoxUI) window.VoxUI.playEffect('error');
                     }
                 } else {
