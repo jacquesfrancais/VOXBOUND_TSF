@@ -91,7 +91,7 @@ try {
 
     // 6.2 FETCH PLAYER INVENTORY
     $invStmt = $pdo->prepare("
-        SELECT i.instanceId, l.nameFrench, l.nameEnglish, l.weight
+        SELECT i.instanceId, l.nameFrench, l.nameEnglish, l.weight, i.isEquipped, l.itemType
         FROM ItemInstances i
         JOIN ItemLibrary l ON i.itemId = l.itemId
         WHERE i.characterId = :charId AND i.ownerType = 'Player' AND i.ownerId = :ownerId

@@ -31,9 +31,10 @@ function spawnInitialWorldState($pdo, $charId) {
     // 3. INITIALIZE ITEM INSTANCES
     // Populates items based on WorldTemplates. 
     // COALESCE ensures starting gear (ownerId NULL in template) is assigned to the player.
+    // Only items assigned to 'Player' should start as equipped.
     $itemSpawn = $pdo->prepare("
-        INSERT INTO ItemInstances (characterId, itemId, ownerType, ownerId)
-        SELECT :charId, itemId, ownerType, COALESCE(ownerId, :charId_alt)
+        INSERT INTO ItemInstances (characterId, itemId, ownerType, ownerId, isEquipped)
+        SELECT :charId, itemId, ownerType, COALESCE(ownerId, :charId_alt), (CASE WHEN ownerType = 'Player' THEN 1 ELSE 0 END)
         FROM WorldTemplates
     ");
     $itemSpawn->execute([

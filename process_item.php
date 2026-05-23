@@ -120,6 +120,51 @@ $charStmt->execute(['id' => $charId]);
             'message' => "Vous avez posé : " . $item['nameFrench'],
             'debug' => $debug_logs
         ]);
+    } elseif ($action === 'equip') {
+        // 1. Fetch Item Details
+        $stmt = $pdo->prepare("SELECT i.isEquipped, l.itemType, l.nameFrench FROM ItemInstances i JOIN ItemLibrary l ON i.itemId = l.itemId WHERE i.instanceId = ? AND i.characterId = ?");
+        $stmt->execute([$instanceId, $charId]);
+        $item = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$item) throw new Exception("Objet non trouvé.");
+
+        if ($item['isEquipped'] == 1) {
+            // Simply unequip
+            $pdo->prepare("UPDATE ItemInstances SET isEquipped = 0 WHERE instanceId = ?")->execute([$instanceId]);
+        } else {
+            // Equip logic with constraints
+            if ($item['itemType'] === 'Weapon') {
+                // Unequip any existing weapons
+                $pdo->prepare("
+                    UPDATE ItemInstances i 
+                    JOIN ItemLibrary l ON i.itemId = l.itemId 
+                    SET i.isEquipped = 0 
+                    WHERE i.characterId = ? AND l.itemType = 'Weapon'
+                ")->execute([$charId]);
+            } elseif ($item['itemType'] === 'Armor') {
+                // Count currently equipped armors
+                $countStmt = $pdo->prepare("
+                    SELECT COUNT(*) 
+                    FROM ItemInstances i 
+                    JOIN ItemLibrary l ON i.itemId = l.itemId 
+                    WHERE i.characterId = ? AND l.itemType = 'Armor' AND i.isEquipped = 1
+                ");
+                $countStmt->execute([$charId]);
+                if ($countStmt->fetchColumn() >= 2) {
+                    echo json_encode([
+                        'success' => false, 
+                        'error' => "Limite d'armure atteinte. Déséquipez un objet d'abord.",
+                        'debug' => $debug_logs
+                    ]);
+                    exit;
+                }
+            }
+
+            // Apply equipment
+            $pdo->prepare("UPDATE ItemInstances SET isEquipped = 1 WHERE instanceId = ?")->execute([$instanceId]);
+        }
+
+        echo json_encode(['success' => true, 'debug' => $debug_logs]);
     }
 
 } catch (Exception $e) {

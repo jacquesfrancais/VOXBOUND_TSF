@@ -74,13 +74,28 @@ function checkAvoidance($attackerAgi, $defenderAgi) {
 }
 
 /**
- * Fetches the armor value for a specific actor.
+ * Fetches all combat modifiers (Armor, STR, AGI, Dice) from an actor's equipped gear.
  */
-function fetchActorArmor($pdo, $charId, $ownerType, $ownerId) {
-    $stmt = $pdo->prepare("SELECT l.extraData FROM ItemInstances i JOIN ItemLibrary l ON i.itemId = l.itemId WHERE i.characterId = ? AND i.ownerType = ? AND i.ownerId = ? AND l.itemType = 'Armor' LIMIT 1");
+function fetchActorGear($pdo, $charId, $ownerType, $ownerId) {
+    $stmt = $pdo->prepare("
+        SELECT l.extraData, l.itemType 
+        FROM ItemInstances i 
+        JOIN ItemLibrary l ON i.itemId = l.itemId 
+        WHERE i.characterId = ? AND i.ownerType = ? AND i.ownerId = ? 
+        AND l.itemType IN ('Weapon', 'Armor') AND i.isEquipped = 1
+    ");
     $stmt->execute([$charId, $ownerType, $ownerId]);
-    $json = $stmt->fetchColumn();
-    return $json ? (int)(json_decode($json, true)['armorValue'] ?? 0) : 0;
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $res = ['armor' => 0, 'str' => 0, 'agi' => 0, 'dice' => '1d4'];
+    foreach ($rows as $row) {
+        $d = json_decode($row['extraData'], true) ?: [];
+        $res['str'] += (int)($d['strBonus'] ?? 0);
+        $res['agi'] += (int)($d['agiBonus'] ?? 0);
+        if ($row['itemType'] === 'Armor') $res['armor'] += (int)($d['armorValue'] ?? 0);
+        if ($row['itemType'] === 'Weapon' && isset($d['dice'])) $res['dice'] = $d['dice'];
+    }
+    return $res;
 }
 
 /**
@@ -106,15 +121,32 @@ function handleFleeCheck($pdo, $charId, $actor, $npcId) {
 }
 
 /**
+ * Transfers lootable items from an NPC instance to the room floor.
+ */
+function handleLootDrop($pdo, $charId, $npcId, $locationId) {
+    global $debug_logs;
+    $lootStmt = $pdo->prepare("SELECT i.instanceId, l.extraData FROM ItemInstances i JOIN ItemLibrary l ON i.itemId = l.itemId WHERE i.characterId = ? AND i.ownerType = 'NPC' AND i.ownerId = ?");
+    $lootStmt->execute([$charId, $npcId]);
+    $items = $lootStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($items as $item) {
+        $extra = json_decode($item['extraData'], true);
+        if (!isset($extra['lootable']) || $extra['lootable'] !== false) {
+            $pdo->prepare("UPDATE ItemInstances SET ownerType = 'Room', ownerId = ? WHERE instanceId = ?")->execute([$locationId, $item['instanceId']]);
+            debug_log("Loot Dropped: Instance {$item['instanceId']} moved to Node $locationId.");
+        }
+    }
+}
+
+/**
  * Calculates final damage after Linguistic Tier and Armor modifiers.
  */
-function calculateNetDamage($baseStr, $weaponJson, $tier, $isCrit, $targetArmor) {
+function calculateNetDamage($totalStr, $dice, $tier, $isCrit, $targetArmor) {
     global $debug_logs;
-    $weapon = json_decode($weaponJson ?: '{"dice":"1d4","strBonus":0}', true);
-    $diceResult = rollDice($weapon['dice'], ($tier === 'Parfait'));
+    $diceResult = rollDice($dice, ($tier === 'Parfait'));
     
-    $rawDamage = $diceResult + (int)$baseStr + (int)($weapon['strBonus'] ?? 0);
-    debug_log("Math: Roll({$diceResult}) + Base({$baseStr}) + Bonus(" . ($weapon['strBonus'] ?? 0) . ") = Raw({$rawDamage})");
+    $rawDamage = $diceResult + (int)$totalStr;
+    debug_log("Math: Roll({$diceResult}) + Total Strength({$totalStr}) = Raw({$rawDamage})");
 
     if ($tier === 'Bien') $rawDamage = floor($rawDamage / 2);
     if ($tier === 'Pas compris') return 0;
@@ -135,15 +167,23 @@ try {
     $mStmt->execute([$charId, $targetNpcId]);
     $monster = $mStmt->fetch(PDO::FETCH_ASSOC);
 
+    // Aggregated Player Stats
+    $pGear = fetchActorGear($pdo, $charId, 'Player', $charId);
+    $pStr = (int)$player['strength'] + $pGear['str'];
+    $pAgi = (int)$player['agility'] + $pGear['agi'];
+
+    // Aggregated Monster Stats
+    $mGear = fetchActorGear($pdo, $charId, 'NPC', $targetNpcId);
+    $mStr = (int)$monster['strength'] + $mGear['str'];
+    $mAgi = (int)$monster['agility'] + $mGear['agi'];
+    $mArmor = $mGear['armor'];
+
     // 1.5 VALIDATION
     if (!$monster || (int)$monster['isDead'] === 1) {
         combat_log("Cette cible est déjà sans vie.");
         echo json_encode(['success' => true, 'victory' => true, 'log' => $log, 'debug' => $debug_logs, 'monsterHp' => 0]);
         exit;
     }
-
-    $monsterArmor = fetchActorArmor($pdo, $charId, 'NPC', $targetNpcId);
-    $playerArmor  = fetchActorArmor($pdo, $charId, 'Player', $charId);
 
     $aStmt = $pdo->prepare("SELECT s.*, n.npcNameFrench, n.strength, n.agility, n.maxHitPoints FROM Character_NPC_State s JOIN Npcs n ON s.npcId = n.npcId WHERE s.characterId = ? AND s.isFollowing = 1 AND s.isDead = 0");
     $aStmt->execute([$charId]);
@@ -152,19 +192,16 @@ try {
     $threatMap = [];
 
     // 2. PLAYER TURN
-    $isCrit = checkCriticalHit((int)$player['agility'], (int)$monster['agility']);
-    $isDodged = checkAvoidance((int)$player['agility'], (int)$monster['agility']);
+    $isCrit = checkCriticalHit($pAgi, $mAgi);
+    $isDodged = checkAvoidance($pAgi, $mAgi);
 
     if ($isDodged) {
         $netDamage = 0;
         combat_log("Le {$monster['npcNameFrench']} a esquivé votre attaque !");
         debug_log("Player Turn: Dodged by Monster.");
     } else {
-        $wStmt = $pdo->prepare("SELECT l.extraData FROM ItemInstances i JOIN ItemLibrary l ON i.itemId = l.itemId WHERE i.characterId = ? AND i.ownerType = 'Player' AND i.itemId IN (SELECT itemId FROM ItemLibrary WHERE itemType = 'Weapon') LIMIT 1");
-        $wStmt->execute([$charId]);
-        $wJson = $wStmt->fetchColumn();
-        debug_log("Player Attack Init: Tier({$tier}) | Crit(" . ($isCrit ? "YES" : "NO") . ")");
-        $netDamage = calculateNetDamage($player['strength'], $wJson, $tier, $isCrit, $monsterArmor);
+        debug_log("Player Attack Init: Tier({$tier}) | Crit(" . ($isCrit ? "YES" : "NO") . ") | Str: $pStr");
+        $netDamage = calculateNetDamage($pStr, $pGear['dice'], $tier, $isCrit, $mArmor);
         combat_log(($isCrit ? "COUP CRITIQUE ! " : "") . "Vous frappez le {$monster['npcNameFrench']} pour {$netDamage} dégâts ! ($tier)");
     }
     $threatMap['player'] = $netDamage;
@@ -173,21 +210,20 @@ try {
     // 3. ALLY TURNS
     foreach ($allies as $ally) {
         if ($monster['currentHitPoints'] <= 0) break;
-        $isCrit = checkCriticalHit((int)$ally['agility'], (int)$monster['agility']);
-        $isDodged = checkAvoidance((int)$ally['agility'], (int)$monster['agility']);
+        $aGear = fetchActorGear($pdo, $charId, 'NPC', $ally['npcId']);
+        $aStr = (int)$ally['strength'] + $aGear['str'];
+        $aAgi = (int)$ally['agility'] + $aGear['agi'];
+
+        $isCrit = checkCriticalHit($aAgi, $mAgi);
+        $isDodged = checkAvoidance($aAgi, $mAgi);
+
         if ($isDodged) {
             $netAllyDmg = 0;
             combat_log("{$ally['npcNameFrench']} a attaqué, mais le {$monster['npcNameFrench']} a esquivé !");
             debug_log("Ally {$ally['npcNameFrench']} Turn: Dodged.");
         } else {
-            // Fetch Ally equipped weapon
-            $awStmt = $pdo->prepare("SELECT l.extraData FROM ItemInstances i JOIN ItemLibrary l ON i.itemId = l.itemId WHERE i.characterId = ? AND i.ownerType = 'NPC' AND i.ownerId = ? AND l.itemType = 'Weapon' LIMIT 1");
-            $awStmt->execute([$charId, $ally['npcId']]);
-            $awJson = $awStmt->fetchColumn();
-            
-            debug_log("Ally {$ally['npcNameFrench']} Attack Init: Crit(" . ($isCrit ? "YES" : "NO") . ")");
-            // Allies use full strength and actual weapon, but default to 'Bien' (0.5x multiplier) for balance
-            $netAllyDmg = calculateNetDamage($ally['strength'], $awJson, 'Bien', $isCrit, $monsterArmor);
+            debug_log("Ally {$ally['npcNameFrench']} Attack Init: Crit(" . ($isCrit ? "YES" : "NO") . ") | Str: $aStr");
+            $netAllyDmg = calculateNetDamage($aStr, $aGear['dice'], 'Bien', $isCrit, $mArmor);
             combat_log(($isCrit ? "COUP CRITIQUE ! " : "") . "{$ally['npcNameFrench']} attaque : {$netAllyDmg} dégâts !");
         }
         $threatMap['ally_'.$ally['npcId']] = $netAllyDmg;
@@ -199,15 +235,7 @@ try {
         $monster['currentHitPoints'] = 0;
         $pdo->prepare("UPDATE Character_NPC_State SET currentHitPoints = 0, isDead = 1 WHERE characterId = ? AND npcId = ?")->execute([$charId, $targetNpcId]);
         
-        // Handle Loot
-        $lootStmt = $pdo->prepare("SELECT i.instanceId, l.extraData FROM ItemInstances i JOIN ItemLibrary l ON i.itemId = l.itemId WHERE i.characterId = ? AND i.ownerType = 'NPC' AND i.ownerId = ?");
-        $lootStmt->execute([$charId, $targetNpcId]);
-        foreach ($lootStmt->fetchAll() as $item) {
-            $extra = json_decode($item['extraData'], true);
-            if (!isset($extra['lootable']) || $extra['lootable'] !== false) {
-                $pdo->prepare("UPDATE ItemInstances SET ownerType = 'Room', ownerId = ? WHERE instanceId = ?")->execute([$monster['currentLocationId'], $item['instanceId']]);
-            }
-        }
+        handleLootDrop($pdo, $charId, $targetNpcId, $monster['currentLocationId']);
 
         // Handle Stats
         $strG = (int)ceil($monster['strength'] * 0.1);
@@ -234,18 +262,12 @@ try {
     debug_log("Current Round Threat Rankings: " . json_encode($threatMap));
     $primaryThreat = key($threatMap) ?: 'player';
 
-    // Fetch Monster equipped weapon (like Dragon Fire)
-    $mwStmt = $pdo->prepare("SELECT l.extraData FROM ItemInstances i JOIN ItemLibrary l ON i.itemId = l.itemId WHERE i.characterId = ? AND i.ownerType = 'NPC' AND i.ownerId = ? AND l.itemType = 'Weapon' LIMIT 1");
-    $mwStmt->execute([$charId, $targetNpcId]);
-    $monsterWeapon = $mwStmt->fetchColumn();
-
     if ($primaryThreat === 'player') {
-        $isCrit = checkCriticalHit((int)$monster['agility'], (int)$player['agility']);
-        $isDodged = checkAvoidance((int)$monster['agility'], (int)$player['agility']);
+        $isCrit = checkCriticalHit($mAgi, $pAgi);
+        $isDodged = checkAvoidance($mAgi, $pAgi);
         
-        debug_log("Monster Retaliation vs Player: Crit(" . ($isCrit ? "YES" : "NO") . ") | Dodge(" . ($isDodged ? "YES" : "NO") . ")");
-        // Monsters use full strength and actual weapon. Tier 'Bien' results in (STR+Dice)/2.
-        $dmg = $isDodged ? 0 : calculateNetDamage($monster['strength'], $monsterWeapon, 'Bien', $isCrit, $playerArmor);
+        debug_log("Monster Retaliation vs Player: Crit(" . ($isCrit ? "YES" : "NO") . ") | Dodge(" . ($isDodged ? "YES" : "NO") . ") | Str: $mStr");
+        $dmg = $isDodged ? 0 : calculateNetDamage($mStr, $mGear['dice'], 'Bien', $isCrit, $pGear['armor']);
         
         $player['hitPoints'] -= $dmg;
         $pdo->prepare("UPDATE Characters SET hitPoints = ? WHERE id = ?")->execute([$player['hitPoints'], $charId]);
@@ -262,12 +284,14 @@ try {
         $tAlly = null;
         foreach ($allies as $a) { if ($a['npcId'] == $tId) { $tAlly = $a; break; } }
         if ($tAlly) {
-            $aArm = fetchActorArmor($pdo, $charId, 'NPC', $tId);
-            $isCrit = checkCriticalHit((int)$monster['agility'], (int)$tAlly['agility']);
-            $isDodged = checkAvoidance((int)$monster['agility'], (int)$tAlly['agility']);
+            $taGear = fetchActorGear($pdo, $charId, 'NPC', $tId);
+            $taAgi = (int)$tAlly['agility'] + $taGear['agi'];
+            
+            $isCrit = checkCriticalHit($mAgi, $taAgi);
+            $isDodged = checkAvoidance($mAgi, $taAgi);
             
             debug_log("Monster Retaliation vs Ally {$tAlly['npcNameFrench']}: Crit(" . ($isCrit ? "YES" : "NO") . ") | Dodge(" . ($isDodged ? "YES" : "NO") . ")");
-            $dmg = $isDodged ? 0 : calculateNetDamage($monster['strength'], $monsterWeapon, 'Bien', $isCrit, $aArm);
+            $dmg = $isDodged ? 0 : calculateNetDamage($mStr, $mGear['dice'], 'Bien', $isCrit, $taGear['armor']);
             
             $newAllyHp = max(0, $tAlly['currentHitPoints'] - $dmg);
             $isAllyDead = ($newAllyHp <= 0) ? 1 : 0;
@@ -280,6 +304,7 @@ try {
             
             if ($isAllyDead) {
                 combat_log("{$tAlly['npcNameFrench']} est tombé au combat !");
+                handleLootDrop($pdo, $charId, $tId, $tAlly['currentLocationId']);
             } elseif (handleFleeCheck($pdo, $charId, $tAlly, $tId)) {
                 combat_log("Touché grièvement, {$tAlly['npcNameFrench']} a pris la fuite !");
             }

@@ -53,3 +53,26 @@ function dropItem(instanceId) {
     })
     .catch(err => console.error("[ENGINE] Item interaction communication error:", err));
 }
+
+/**
+ * ITEM SYSTEM: Sends a request to equip/unequip an item.
+ * @param {number} instanceId 
+ */
+function equipItem(instanceId) {
+    console.log(`[INVENTORY] Toggling equipment for instance: ${instanceId}`);
+    fetch('process_item.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'equip', instanceId: instanceId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            if (typeof initializeGame === 'function') initializeGame();
+        } else {
+            const feedbackArea = document.getElementById('command-feedback');
+            if (feedbackArea) feedbackArea.innerHTML = `<span style="color:#ff5555;">&gt; ${data.error}</span>`;
+        }
+    })
+    .catch(err => console.error("[ENGINE] Item equipment communication error:", err));
+}

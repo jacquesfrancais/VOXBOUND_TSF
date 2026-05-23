@@ -54,10 +54,11 @@ function updateUI(data) {
                     li.style.color = "#666";
                     li.innerHTML = `• <span style="color:#ff5555">[CADAVRE]</span> ${name}`;
                 } else {
-                    li.style.cursor = "help";
-                    li.onclick = () => startDialogue(npc.npcId, npc.npcNameFrench);
                     const stats = `<span style="color:var(--accent-gold); font-size:0.7rem; opacity:0.8;"> [HP:${npc.currentHitPoints}/${npc.maxHitPoints} STR:${npc.strength} AGI:${npc.agility}]</span>`;
-                    li.innerHTML = `• <span style="color:var(--primary-cyan)">[PARLER]</span> ${name}${stats} <span style="color:#666; font-style:italic;">"${npc.greetingFrench}"</span>`;
+                    const attBtn = `<span style="cursor:pointer; color:var(--accent-gold);" onclick="startCombatTurn('J\\\'attaque', 'Bien', ${npc.npcId})">[ATTAQUER]</span>`;
+                    const parlBtn = `<span style="cursor:help; color:var(--primary-cyan);" onclick="startDialogue(${npc.npcId}, '${npc.npcNameFrench.replace(/'/g, "\\'")}')">[PARLER]</span>`;
+                    
+                    li.innerHTML = `• ${attBtn} ${parlBtn} ${name}${stats} <span style="color:#666; font-style:italic;">"${npc.greetingFrench}"</span>`;
                 }
                 npcList.appendChild(li);
             });
@@ -113,7 +114,15 @@ function updateUI(data) {
             data.inventory.forEach(item => {
                 const li = document.createElement('li');
                 const name = (currentLanguage === 'fr') ? item.nameFrench : item.nameEnglish;
+
+                let equipBtn = '';
+                if (item.itemType === 'Weapon' || item.itemType === 'Armor') {
+                    const activeStyle = (item.isEquipped == 1) ? 'background:var(--accent-gold); color:#000;' : '';
+                    equipBtn = `<button class="btn-outline" onclick="equipItem(${item.instanceId})" style="font-size:0.6rem; padding:1px 4px; margin-left:5px; ${activeStyle}">ÉQUIPER</button>`;
+                }
+
                 li.innerHTML = `• ${name} <span style="color:#444; font-size:0.7rem;">(${item.weight}kg)</span> 
+                                ${equipBtn}
                                 <button class="btn-outline" onclick="dropItem(${item.instanceId})" style="font-size:0.6rem; padding:1px 4px; margin-left:5px; border-color:#888; color:#888;">POSER</button>`;
                 invList.appendChild(li);
             });
@@ -286,7 +295,7 @@ function startVoiceCommand() {
                         feedbackArea.innerHTML += ` <span style="color:#ff5555; font-size:0.7rem;">[OBJET NON TROUVÉ]</span>`;
                         if (window.VoxUI) window.VoxUI.playEffect('error');
                     }
-                } else if (spoken.includes("posez") || spoken.includes("poser")) {
+                } else if (spoken.includes("posez") || spoken.includes("poser") || spoken.includes("posé")) {
                     const playerInv = (lastRoomData && lastRoomData.inventory) ? lastRoomData.inventory : [];
                     const itemToDrop = playerInv.find(item => spoken.includes(item.nameFrench.toLowerCase()));
                     
