@@ -51,12 +51,12 @@ $locTitle = $locStmt->fetchColumn() ?: "Unknown Location";
         <!-- RIGHT: STATS & CONTROLS -->
         <aside style="display:flex; flex-direction:column; gap:20px;">
             <?php 
-            include __DIR__ . '/partials/ui_command_manual.php';
             include __DIR__ . '/partials/ui_stats.php';
+            include __DIR__ . '/partials/ui_movement.php';
             include __DIR__ . '/partials/ui_inventory.php';
             include __DIR__ . '/partials/ui_party.php';
-            include __DIR__ . '/partials/ui_movement.php';
             include __DIR__ . '/partials/ui_map.php';
+            include __DIR__ . '/partials/ui_command_manual.php';
             ?>
         </aside>
 
