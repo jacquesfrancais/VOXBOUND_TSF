@@ -1,0 +1,38 @@
+-- VOXBOUND Locations SQL Update
+-- Generated based on Project Bible v2.5 structural constraints
+-- Includes absolute 8-way navigation layout & auto-calculated grid map coordinates (X, Y, Z)
+
+LOCK TABLES `Locations` WRITE;
+/*!40000 ALTER TABLE `Locations` DISABLE KEYS */;
+
+INSERT INTO `Locations` 
+(`nodeId`, `title`, `parentId`, `isCheckpoint`, `nodeType`, `textFrench`, `textEnglish`, `northTarget`, `southTarget`, `eastTarget`, `westTarget`, `upTarget`, `downTarget`, `inTarget`, `outTarget`, `mapX`, `mapY`, `mapZ`) 
+VALUES 
+(301, 'Room 301', 300, 1, 'Generic Node', 'Francais Description', 'English Description', 316, 302, 303, 305, 0, 0, 0, 0, 0, 0, 0),
+(302, 'Room 302', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 301, 0, 0, 0, 0, 306, 0, 0, 0, -1, 0),
+(303, 'Room 303', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 0, 0, 304, 301, 0, 0, 0, 0, 1, 0, 0),
+(304, 'Room 304', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 0, 0, 0, 303, 0, 0, 315, 0, 2, 0, 0),
+(305, 'Room 305', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 0, 0, 301, 0, 0, 0, 0, 0, -1, 0, 0),
+(306, 'Room 306', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 0, 0, 307, 0, 302, 0, 0, 0, 0, -1, -1),
+(307, 'Room 307', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 0, 308, 0, 306, 0, 0, 0, 0, 1, -1, -1),
+(308, 'Room 308', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 307, 0, 309, 310, 0, 312, 0, 0, 1, -2, -1),
+(309, 'Room 309', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 0, 0, 0, 308, 0, 0, 0, 0, 2, -2, -1),
+(310, 'Room 310', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 0, 0, 308, 0, 0, 0, 0, 0, 0, -2, -1),
+(311, 'Room 311', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 0, 0, 312, 0, 0, 0, 0, 0, 0, -2, -2),
+(312, 'Room 312', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 0, 0, 313, 311, 308, 0, 0, 0, 1, -2, -2),
+(313, 'Room 313', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 0, 0, 314, 312, 0, 0, 0, 0, 2, -2, -2),
+(314, 'Room 314', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 0, 0, 0, 313, 0, 0, 0, 0, 3, -2, -2),
+(315, 'Room 315', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 0, 0, 0, 0, 0, 0, 0, 304, 3, 0, 0),
+(316, 'Room 316', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 317, 301, 0, 0, 0, 0, 0, 0, 0, 1, 0),
+(317, 'Room 317', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 319, 316, 0, 0, 0, 0, 0, 0, 0, 2, 0),
+(318, 'Room 318', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 0, 0, 0, 319, 0, 0, 0, 0, 1, 3, 0),
+(319, 'Room 319', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 323, 317, 318, 320, 324, 0, 0, 0, 0, 3, 0),
+(320, 'Room 320', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 0, 0, 319, 321, 0, 0, 0, 0, -1, 3, 0),
+(321, 'Room 321', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 0, 0, 320, 0, 0, 0, 322, 0, -2, 3, 0),
+(322, 'Room 322', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 0, 0, 0, 0, 0, 0, 0, 321, -3, 3, 0),
+(323, 'Room 323', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 0, 319, 0, 0, 0, 0, 0, 0, 0, 4, 0),
+(324, 'Room 324', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 0, 0, 0, 0, 325, 319, 0, 0, 0, 3, 1),
+(325, 'Room 325', 300, 0, 'Generic Node', 'Francais Description', 'English Description', 0, 0, 0, 0, 0, 324, 0, 0, 0, 3, 2);
+
+/*!40000 ALTER TABLE `Locations` ENABLE KEYS */;
+UNLOCK TABLES;
